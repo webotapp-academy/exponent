@@ -1,3 +1,4 @@
+import 'practice_tests_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'welcome_screen.dart';
@@ -7,521 +8,269 @@ import 'profile_screen.dart';
 import 'store_screen.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
 import 'watch_videos_screen.dart';
-import 'practice_tests_screen.dart';
+
+import 'career_counselling_form_screen.dart';
+import 'neet_test_series_screen.dart';
 
 import 'study_materials_screen.dart';
 
 import 'assignments_screen.dart';
-import 'change_exam_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
-
   const HomeScreen({super.key, required this.userData});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-  int _selectedIndex = 0;
-
-  late AnimationController _greetingAnimationController;
-  late AnimationController _cardAnimationController;
-  late Animation<double> _greetingFadeAnimation;
-  late Animation<Offset> _cardSlideAnimation;
-
-  // Enhanced banner items with gradient colors
-  final List<Map<String, dynamic>> bannerItems = [
-    {
-      'title': 'UKG Starter Pack',
-      'description': 'Complete learning solution for UKG',
-      'image':
-          'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fGJvb2tzfGVufDB8fDB8fHww',
-      'gradient': [Colors.purple[400]!, Colors.purple[600]!],
-    },
-    {
-      'title': 'English Mastery Course',
-      'description': 'Enhance your child\'s communication skills',
-      'image':
-          'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fGJvb2tzfGVufDB8fDB8fHww',
-      'gradient': [Colors.blue[400]!, Colors.blue[600]!],
-    },
-    {
-      'title': 'Maths Fundamentals',
-      'description': 'Build strong mathematical foundations',
-      'image':
-          'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fGJvb2tzfGVufDB8fDB8fHww',
-      'gradient': [Colors.green[400]!, Colors.green[600]!],
-    },
-  ];
-
-  // Quick actions with enhanced design
-  final List<Map<String, dynamic>> quickActions = [
-    {
-      'icon': Icons.play_circle_filled,
-      'label': 'Watch Videos',
-      'color': Colors.red[400],
-      'description': 'Interactive learning',
-    },
-    {
-      'icon': Icons.quiz,
-      'label': 'Practice Tests',
-      'color': Colors.orange[400],
-      'description': 'Test your knowledge',
-    },
-    {
-      'icon': Icons.menu_book,
-      'label': 'Study Materials',
-      'color': Colors.teal[400],
-      'description': 'Comprehensive notes',
-    },
-    {
-      'icon': Icons.assignment,
-      'label': 'Assignments',
-      'color': Colors.indigo[400],
-      'description': 'Homework help',
-    },
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeAnimations();
-    _startAnimations();
-    Future.delayed(const Duration(seconds: 3), _autoScroll);
-  }
-
-  void _initializeAnimations() {
-    _greetingAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-
-    _cardAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _greetingFadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _greetingAnimationController,
-      curve: Curves.easeInOut,
-    ));
-
-    _cardSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _cardAnimationController,
-      curve: Curves.easeOutBack,
-    ));
-  }
-
-  void _startAnimations() {
-    _greetingAnimationController.forward();
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        _cardAnimationController.forward();
-      }
-    });
-  }
-
-  void _autoScroll() {
-    if (!mounted) return;
-
-    setState(() {
-      _currentPage = (_currentPage + 1) % bannerItems.length;
-    });
-
-    _pageController.animateToPage(
-      _currentPage,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-
-    Future.delayed(const Duration(seconds: 4), _autoScroll);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _greetingAnimationController.dispose();
-    _cardAnimationController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final List<String> sliderImages = [
+      'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1503676382389-4809596d5290?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?w=600&auto=format&fit=crop&q=60',
+    ];
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // Custom App Bar
-          SliverAppBar(
-            expandedHeight: 120,
-            floating: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.blue[800],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Colors.blue[700]!, Colors.blue[900]!],
+      appBar: AppBar(
+        title: Text('Exponent Classes',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            )),
+        backgroundColor: Colors.blue[800],
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      drawer: const EnhancedHomeDrawer(),
+      body: ListView(
+        children: [
+          // Image Slider
+          SizedBox(
+            height: 200,
+            child: PageView.builder(
+              itemCount: sliderImages.length,
+              controller: PageController(viewportFraction: 0.9),
+              itemBuilder: (context, index) {
+                return Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    image: DecorationImage(
+                      image: NetworkImage(sliderImages[index]),
+                      fit: BoxFit.cover,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        FadeTransition(
-                          opacity: _greetingFadeAnimation,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Good ${_getGreeting()}!',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                              Text(
-                                '${widget.userData['Name'] ?? 'User'}',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
+                );
+              },
+            ),
+          ),
+
+          // Cards Section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // My Course Card
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MyCoursesScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.withOpacity(0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.menu_book,
+                                  color: Colors.blue[800], size: 40),
+                              const SizedBox(height: 12),
+                              Text('My Course',
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: Colors.blue[900])),
+                              const SizedBox(height: 4),
+                              Text('View your enrolled courses',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 12, color: Colors.blueGrey)),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    // Try a Class Card
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PracticeTestsScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: Colors.orange[50],
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.withOpacity(0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.play_circle_fill,
+                                  color: Colors.orange[800], size: 40),
+                              const SizedBox(height: 12),
+                              Text('Try a Class',
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: Colors.orange[900])),
+                              const SizedBox(height: 4),
+                              Text('Experience a free class',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 12, color: Colors.blueGrey)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.notifications_outlined,
-                      color: Colors.white),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    // Free Career Counselling Card
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const CareerCounsellingFormScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withOpacity(0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.support_agent,
+                                  color: Colors.green[700], size: 40),
+                              const SizedBox(height: 12),
+                              Text('Free Career Counselling',
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: Colors.green[900])),
+                              const SizedBox(height: 4),
+                              Text('Book a free session',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 12, color: Colors.blueGrey)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Free NEET Test Series Card
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const NeetTestSeriesScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: Colors.purple[50],
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.purple.withOpacity(0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.assignment,
+                                  color: Colors.purple[700], size: 40),
+                              const SizedBox(height: 12),
+                              Text('Free NEET Test Series',
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: Colors.purple[900])),
+                              const SizedBox(height: 4),
+                              Text('Attempt mock tests',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 12, color: Colors.blueGrey)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                onPressed: () {},
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-
-          // Main Content
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                // Enhanced Banner
-                _buildEnhancedBanner(),
-
-                // Quick Actions Grid
-                SlideTransition(
-                  position: _cardSlideAnimation,
-                  child: _buildQuickActionsGrid(),
-                ),
-
-                // Stats Card
-                _buildStatsCard(),
-
-                // My Courses Section
-                _buildMyCoursesSection(),
-
-                // Recent Activity
-                _buildRecentActivity(),
-
-                const SizedBox(height: 100), // Bottom padding for nav bar
               ],
             ),
           ),
         ],
       ),
-      drawer: const EnhancedHomeDrawer(),
       bottomNavigationBar: const CustomBottomNavBar(currentIndex: 0),
-    );
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Morning';
-    if (hour < 17) return 'Afternoon';
-    return 'Evening';
-  }
-
-  Widget _buildEnhancedBanner() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      height: 200,
-      child: Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: bannerItems.length,
-            onPageChanged: (int page) {
-              setState(() {
-                _currentPage = page;
-              });
-            },
-            itemBuilder: (context, index) {
-              final item = bannerItems[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: item['gradient'],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: item['gradient'][0].withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: -20,
-                      top: -20,
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.school,
-                            color: Colors.white,
-                            size: 40,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            item['title']!,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            item['description']!,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: item['gradient'][1],
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              'Get Started',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          // Page Indicators
-          Positioned(
-            bottom: 16,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                bannerItems.length,
-                (index) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: _currentPage == index ? 24 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _currentPage == index
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionsGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Actions',
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 1),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: quickActions.length,
-            itemBuilder: (context, index) {
-              final action = quickActions[index];
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () {
-                      if (index == 0) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const WatchVideosScreen(),
-                          ),
-                        );
-                      } else if (index == 1) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const PracticeTestsScreen(),
-                          ),
-                        );
-                      } else if (index == 2) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const StudyMaterialsScreen(),
-                          ),
-                        );
-                      } else if (index == 3) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AssignmentsScreen(),
-                          ),
-                        );
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: action['color'].withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              action['icon'],
-                              color: action['color'],
-                              size: 28,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            action['label'],
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[800],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            action['description'],
-                            style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: Colors.grey[600],
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
     );
   }
 
@@ -909,18 +658,6 @@ class EnhancedHomeDrawer extends StatelessWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                _buildDrawerItem(
-                  context: context,
-                  icon: Icons.change_circle_outlined,
-                  title: 'Change Exam',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const ChangeExamScreen(),
-                      ),
-                    );
-                  },
-                ),
                 _buildDrawerItem(
                   context: context,
                   icon: Icons.card_giftcard,

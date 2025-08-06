@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../screens/my_courses_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/store_screen.dart';
+import '../screens/study_materials_screen.dart';
 import '../screens/home_screen.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
@@ -83,7 +84,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                const StoreScreen(),
+                const StudyMaterialsScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
@@ -240,9 +241,9 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                         ? _scaleAnimation
                         : const AlwaysStoppedAnimation(1.0),
                     child: _buildNavItem(
-                      icon: Icons.store_outlined,
-                      activeIcon: Icons.store,
-                      label: 'Store',
+                      icon: Icons.menu_book_outlined,
+                      activeIcon: Icons.menu_book,
+                      label: 'Materials',
                       index: 2,
                       isSelected: widget.currentIndex == 2,
                     ),

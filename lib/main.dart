@@ -1,5 +1,6 @@
 import 'package:edu_rev_app/screens/home_screen.dart';
 import 'package:edu_rev_app/screens/signup_screen.dart';
+import 'package:edu_rev_app/screens/watch_videos_screen.dart';
 import 'package:edu_rev_app/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,6 +58,11 @@ class EduRevApp extends StatelessWidget {
       ),
       // Use const constructor for splash screen to reduce object creation
       home: const SplashScreen(),
+      routes: {
+        '/watch_videos': (context) =>
+            WatchVideosScreen(), // Make sure this screen exists
+        // ...other routes...
+      },
     );
   }
 }

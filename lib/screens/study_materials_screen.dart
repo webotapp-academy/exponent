@@ -1,5 +1,9 @@
+import 'package:edu_rev_app/screens/watch_videos_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/custom_bottom_nav_bar.dart';
 
 class StudyMaterialsScreen extends StatefulWidget {
   const StudyMaterialsScreen({super.key});
@@ -36,30 +40,180 @@ class _StudyMaterialsScreenState extends State<StudyMaterialsScreen>
       vsync: this,
     );
     _animationController.forward();
+    _subjectsFuture = fetchSubjects(); // <-- This line is required!
+  }
+
+  late Future<List<dynamic>> _subjectsFuture;
+
+  // Only one initState should exist
+  @override
+  Future<List<dynamic>> fetchSubjects() async {
+    final response = await http.get(
+      Uri.parse(
+          'https://indiawebdesigns.in/app/eduapp/user-app/get_subjects.php'),
+    );
+    final data = jsonDecode(response.body);
+    if (data['status'] == 'success') {
+      return data['subjects'];
+    } else {
+      throw Exception('Failed to load subjects');
+    }
+  }
+
+  IconData _getSubjectIcon(String iconName) {
+    switch (iconName) {
+      case 'biotech':
+        return Icons.biotech;
+      case 'science':
+        return Icons.science;
+      case 'flag':
+        return Icons.flag;
+      case 'calculate':
+        return Icons.calculate;
+      case 'language':
+        return Icons.language;
+      case 'computer':
+        return Icons.computer;
+      case 'attach_money':
+        return Icons.attach_money;
+      case 'public':
+        return Icons.public;
+      case 'history_edu':
+        return Icons.history_edu;
+      case 'account_balance':
+        return Icons.account_balance;
+      default:
+        return Icons.menu_book;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                _buildWelcomeSection(),
-                _buildCategoryTabs(),
-                _buildMaterialTypeTabs(),
-                _buildProgressSection(),
-                _buildFeaturedMaterialsSection(),
-                _buildMaterialsByCategory(),
-              ],
+      appBar: AppBar(
+        title: Text('Class Preview',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF14B8A6),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Subjects',
+                      style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal[900])),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: FutureBuilder<List<dynamic>>(
+                      future: _subjectsFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        } else if (snapshot.hasError) {
+                          return Center(
+                              child: Text('Error: \\${snapshot.error}'));
+                        } else if (!snapshot.hasData ||
+                            snapshot.data!.isEmpty) {
+                          return const Center(
+                              child: Text('No subjects found.'));
+                        }
+                        final subjects = snapshot.data!;
+                        return GridView.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 1.2,
+                          ),
+                          itemCount: subjects.length,
+                          itemBuilder: (context, index) {
+                            final subject = subjects[index];
+                            final color = subject['Color'] != null &&
+                                    subject['Color'].toString().isNotEmpty
+                                ? _parseColor(subject['Color'])
+                                : Colors.teal[400];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => WatchVideosScreen(
+                                      subjectId: subject['Id'],
+                                      subjectName: subject['Name'],
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: (color ?? Colors.teal[400]!)
+                                      .withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (color ?? Colors.teal[400]!)
+                                          .withOpacity(0.08),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(_getSubjectIcon(subject['Icon']),
+                                        color: color, size: 40),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      subject['Name'],
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                        color: Colors.teal[900],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+          CustomBottomNavBar(currentIndex: 2),
         ],
       ),
     );
+  }
+
+  Color _parseColor(String colorString) {
+    try {
+      if (colorString.startsWith('#')) {
+        String hex = colorString.replaceFirst('#', '');
+        if (hex.length == 6) {
+          hex = 'FF' + hex;
+        }
+        return Color(int.parse(hex, radix: 16));
+      }
+    } catch (_) {}
+    return Colors.teal[400]!;
   }
 
   Widget _buildSliverAppBar() {
@@ -662,175 +816,174 @@ class _StudyMaterialsScreenState extends State<StudyMaterialsScreen>
     final ratings = ['4.8', '4.6', '4.9', '4.7', '4.5', '4.8'];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          onTap: () {},
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        colors[index].withOpacity(0.8),
-                        colors[index],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {},
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          colors[index].withOpacity(0.8),
+                          colors[index],
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _getMaterialIcon(materialInfo[index]['type']!),
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          materialInfo[index]['size']!,
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _getMaterialIcon(materialInfo[index]['type']!),
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        materialInfo[index]['size']!,
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              titles[index],
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                color: const Color(0xFF0F172A),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: colors[index].withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              materialInfo[index]['type']!,
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: colors[index],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                titles[index],
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  color: const Color(0xFF0F172A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        descriptions[index],
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: const Color(0xFF64748B),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: colors[index].withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                materialInfo[index]['type']!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors[index],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.description_outlined,
-                            size: 14,
-                            color: colors[index],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            materialInfo[index]['pages']!,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Icon(
-                            Icons.star,
-                            size: 14,
-                            color: const Color(0xFFF59E0B),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            ratings[index],
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Icon(
-                            Icons.download_outlined,
-                            size: 14,
+                        const SizedBox(height: 6),
+                        Text(
+                          descriptions[index],
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
                             color: const Color(0xFF64748B),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            downloadCounts[index],
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.description_outlined,
+                              size: 14,
+                              color: colors[index],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              materialInfo[index]['pages']!,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Icon(
+                              Icons.star,
+                              size: 14,
+                              color: const Color(0xFFF59E0B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              ratings[index],
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Icon(
+                              Icons.download_outlined,
+                              size: 14,
                               color: const Color(0xFF64748B),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 4),
+                            Text(
+                              downloadCounts[index],
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: colors[index].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colors[index].withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.download_rounded,
+                      color: colors[index],
+                      size: 16,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.download_rounded,
-                    color: colors[index],
-                    size: 16,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   @override

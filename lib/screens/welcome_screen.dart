@@ -415,12 +415,8 @@ class WelcomeScreen extends HookWidget {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SignupScreen()),
-                  );
-                },
+                
+                
                 child: Center(
                   child: Text(
                     'Sign up with Email',

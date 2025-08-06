@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class WatchVideosScreen extends StatefulWidget {
-  const WatchVideosScreen({super.key});
+  final dynamic subjectId;
+  final String? subjectName;
+  const WatchVideosScreen({super.key, this.subjectId, this.subjectName});
 
   @override
   State<WatchVideosScreen> createState() => _WatchVideosScreenState();
@@ -31,9 +33,15 @@ class _WatchVideosScreenState extends State<WatchVideosScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: Text(widget.subjectName ?? '',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF14B8A6),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: CustomScrollView(
         slivers: [
-          _buildSliverAppBar(),
           SliverToBoxAdapter(
             child: Column(
               children: [
@@ -46,55 +54,6 @@ class _WatchVideosScreenState extends State<WatchVideosScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSliverAppBar() {
-    return SliverAppBar(
-      expandedHeight: 120,
-      floating: false,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF3B82F6),
-                Color(0xFF1D4ED8),
-                Color(0xFF8B5CF6),
-              ],
-            ),
-          ),
-        ),
-        title: Text(
-          'Watch Videos',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            fontSize: 24,
-          ),
-        ),
-        centerTitle: false,
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-      ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.search, color: Colors.white),
-          onPressed: () {},
-        ),
-        IconButton(
-          icon: const Icon(Icons.bookmark_border, color: Colors.white),
-          onPressed: () {},
-        ),
-      ],
     );
   }
 

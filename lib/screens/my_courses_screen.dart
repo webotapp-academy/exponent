@@ -46,7 +46,6 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
     final filteredCourses = courses.where((course) {
       final name = course['Name'];
       final description = course['Description'];
-      // Safely coerce to string
       final nameStr = (name is String) ? name : (name?.toString() ?? '');
       final descStr = (description is String)
           ? description
@@ -59,109 +58,146 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
       return Center(child: Text('No $filter course found.'));
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: filteredCourses.length,
-      itemBuilder: (context, index) {
-        final course = filteredCourses[index];
-        final imageUrl = course['ImageURL'];
-        final imageUrlStr =
-            (imageUrl is String) ? imageUrl : (imageUrl?.toString() ?? '');
-        final nameStr = (course['Name'] is String)
-            ? course['Name']
-            : (course['Name']?.toString() ?? 'Untitled');
-        final descStr = (course['Description'] is String)
-            ? course['Description']
-            : (course['Description']?.toString() ?? '');
+    return FadeTransition(
+      opacity: _headerFadeAnimation,
+      child: SlideTransition(
+        position: _cardSlideAnimation,
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          itemCount: filteredCourses.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 14),
+          itemBuilder: (context, index) {
+            final course = filteredCourses[index];
+            final imageUrl = course['ImageURL'];
+            final imageUrlStr =
+                (imageUrl is String) ? imageUrl : (imageUrl?.toString() ?? '');
+            final nameStr = (course['Name'] is String)
+                ? course['Name']
+                : (course['Name']?.toString() ?? 'Untitled');
+            final descStr = (course['Description'] is String)
+                ? course['Description']
+                : (course['Description']?.toString() ?? '');
 
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: ListTile(
-            leading: () {
-              final imageUrl = course['ImageURL'];
-              final imageUrlStr = (imageUrl is String)
-                  ? imageUrl
-                  : (imageUrl?.toString() ?? '');
-
-              if (imageUrlStr.isEmpty ||
-                  !(imageUrlStr.startsWith('http://') ||
-                      imageUrlStr.startsWith('https://'))) {
-                // Fallback avatar if URL is missing/invalid
-                return Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.blue[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.menu_book, color: Colors.blue),
-                );
-              }
-
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  imageUrlStr,
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                  // Prevent crashes on redirect/404/SSL issues
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.blue[100],
-                        borderRadius: BorderRadius.circular(8),
+            return Material(
+              color: Colors.white,
+              elevation: 2,
+              shadowColor: Colors.black.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () {},
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Thumbnail with graceful fallback
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: (imageUrlStr.isEmpty ||
+                                !(imageUrlStr.startsWith('http://') ||
+                                    imageUrlStr.startsWith('https://')))
+                            ? Container(
+                                width: 64,
+                                height: 64,
+                                color: Colors.blue[50],
+                                child: Icon(Icons.menu_book,
+                                    color: Colors.blue[700]),
+                              )
+                            : Image.network(
+                                imageUrlStr,
+                                width: 64,
+                                height: 64,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 64,
+                                  height: 64,
+                                  color: Colors.blue[50],
+                                  child: Icon(Icons.menu_book,
+                                      color: Colors.blue[700]),
+                                ),
+                                loadingBuilder: (context, child, progress) {
+                                  if (progress == null) return child;
+                                  return Container(
+                                    width: 64,
+                                    height: 64,
+                                    alignment: Alignment.center,
+                                    color: Colors.grey[200],
+                                    child: const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                       ),
-                      child: const Icon(Icons.menu_book, color: Colors.blue),
-                    );
-                  },
-                  // Optional: show a lightweight placeholder while loading
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      width: 48,
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? (loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!)
-                              : null,
+                      const SizedBox(width: 14),
+                      // Title + description
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              nameStr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              descStr,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12.5,
+                                height: 1.35,
+                                color: const Color(0xFF475569),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            // Light divider feel
+                            Container(
+                              height: 1,
+                              color: const Color(0xFFE2E8F0),
+                            ),
+                            const SizedBox(height: 10),
+                            // Subtle meta row (kept generic, no new static info)
+                            Row(
+                              children: [
+                                Icon(Icons.play_circle_fill,
+                                    size: 18, color: Colors.blue[700]),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Continue',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue[800],
+                                  ),
+                                ),
+                                const Spacer(),
+                                Icon(Icons.chevron_right,
+                                    color: Colors.grey[400]),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
-              );
-            }(),
-            title: Text(
-              nameStr,
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
               ),
-            ),
-            subtitle: Text(
-              descStr,
-              style: GoogleFonts.poppins(fontSize: 14),
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -211,74 +247,50 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text('My Courses',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        title: Text(
+          'My Courses',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: Colors.blue[800],
         elevation: 0,
       ),
       body: Column(
         children: [
-          // Tabs for Class 12 and NEET
+          // Segmented tabs – improved depth and ripple
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedTab = 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color:
-                            _selectedTab == 0 ? Colors.blue[800] : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue[800]!),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Class 12',
-                          style: GoogleFonts.poppins(
-                            color: _selectedTab == 0
-                                ? Colors.white
-                                : Colors.blue[800],
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Material(
+              color: Colors.white,
+              elevation: 1,
+              shadowColor: Colors.black.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedTab = 1),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color:
-                            _selectedTab == 1 ? Colors.blue[800] : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue[800]!),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'NEET',
-                          style: GoogleFonts.poppins(
-                            color: _selectedTab == 1
-                                ? Colors.white
-                                : Colors.blue[800],
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
+                child: Row(
+                  children: [
+                    _SegmentTab(
+                      label: 'Class 12',
+                      selected: _selectedTab == 0,
+                      onTap: () => setState(() => _selectedTab = 0),
+                      color: Colors.blue[800]!,
                     ),
-                  ),
+                    _SegmentTab(
+                      label: 'NEET',
+                      selected: _selectedTab == 1,
+                      onTap: () => setState(() => _selectedTab = 1),
+                      color: Colors.blue[800]!,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
           Expanded(
@@ -304,35 +316,58 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
       bottomNavigationBar: const CustomBottomNavBar(currentIndex: 1),
     );
   }
+}
 
-  // Removed old hardcoded content methods
+// Segmented control tab button with ripple and animated background
+class _SegmentTab extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color color;
 
-  Widget _buildContentSection(String title, List<String> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: GoogleFonts.poppins(
-                fontSize: 18,
+  const _SegmentTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          margin: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: selected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.25),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[800])),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: items
-              .map((item) => Chip(
-                    label: Text(item,
-                        style:
-                            GoogleFonts.poppins(fontWeight: FontWeight.w500)),
-                    backgroundColor: Colors.blue[50],
-                    labelStyle: TextStyle(color: Colors.blue[900]),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  ))
-              .toList(),
+                fontSize: 14.5,
+                color: selected ? Colors.white : color,
+              ),
+            ),
+          ),
         ),
-      ],
+      ),
     );
   }
 }

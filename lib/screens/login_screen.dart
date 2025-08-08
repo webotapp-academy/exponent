@@ -96,11 +96,15 @@ class LoginScreen extends HookWidget {
                       ],
                     ),
                     child: ClipOval(
-                      child: Image.asset(
-                        'assets/icons/logo.png',
-                        fit: BoxFit.cover,
-                        width: 90,
-                        height: 90,
+                      child: Padding(
+                        padding: const EdgeInsets.all(
+                            12), // Add padding to avoid cut
+                        child: Image.asset(
+                          'assets/icons/logo.png',
+                          fit: BoxFit.contain, // Use contain for better fit
+                          width: 66,
+                          height: 66,
+                        ),
                       ),
                     ),
                   ),

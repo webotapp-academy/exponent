@@ -27,7 +27,7 @@ class EduRevApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'EduRev',
+      title: 'Exponent Classes',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         // Use a more efficient text theme

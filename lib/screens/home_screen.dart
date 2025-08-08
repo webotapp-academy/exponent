@@ -44,7 +44,7 @@ class HomeScreen extends StatelessWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      drawer: const EnhancedHomeDrawer(),
+      drawer: EnhancedHomeDrawer(userData: userData),
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -592,7 +592,8 @@ class HomeScreen extends StatelessWidget {
 }
 
 class EnhancedHomeDrawer extends StatelessWidget {
-  const EnhancedHomeDrawer({super.key});
+  final Map<String, dynamic> userData;
+  const EnhancedHomeDrawer({super.key, required this.userData});
 
   @override
   Widget build(BuildContext context) {
@@ -631,7 +632,7 @@ class EnhancedHomeDrawer extends StatelessWidget {
                     const SizedBox(height: 16),
                     Center(
                       child: Text(
-                        'John Doe',
+                        userData['Name'] ?? 'User',
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 20,
@@ -641,7 +642,17 @@ class EnhancedHomeDrawer extends StatelessWidget {
                     ),
                     Center(
                       child: Text(
-                        'Premium Member',
+                        userData['Email'] ?? '',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        userData['Phone'] ?? userData['Userphone'] ?? '',
                         style: GoogleFonts.poppins(
                           color: Colors.white70,
                           fontSize: 14,
@@ -658,7 +669,9 @@ class EnhancedHomeDrawer extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          'Upgrade to Pro',
+                          userData['UserType'] == 'premium'
+                              ? 'Premium Member'
+                              : 'Upgrade to Pro',
                           style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontSize: 12,

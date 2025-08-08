@@ -1,17 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class CareerCounsellingFormScreen extends StatelessWidget {
+class CareerCounsellingFormScreen extends StatefulWidget {
   const CareerCounsellingFormScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final _formKey = GlobalKey<FormState>();
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController phoneController = TextEditingController();
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController messageController = TextEditingController();
+  State<CareerCounsellingFormScreen> createState() =>
+      _CareerCounsellingFormScreenState();
+}
 
+class _CareerCounsellingFormScreenState
+    extends State<CareerCounsellingFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController messageController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _submitting = true);
+    try {
+      // Prefer JSON POST
+      final uri = Uri.parse(
+          'https://indiawebdesigns.in/app/eduapp/user-app/save_career_counselling.php');
+      // If your deployment path differs, update the URL above accordingly.
+
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': nameController.text.trim(),
+          'phone': phoneController.text.trim(),
+          'email': emailController.text.trim().isEmpty
+              ? null
+              : emailController.text.trim(),
+          'message': messageController.text.trim().isEmpty
+              ? null
+              : messageController.text.trim(),
+        }),
+      );
+
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final data = jsonDecode(resp.body);
+        if (data is Map && (data['status'] == 'success')) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Your request has been submitted!')),
+          );
+          Navigator.pop(context);
+          return;
+        }
+      }
+      // Parse error body (if any) for better feedback
+      String message =
+          'Submission failed (${resp.statusCode}). Please try again.';
+      try {
+        final err = jsonDecode(resp.body);
+        if (err is Map) {
+          final serverMsg = err['message'];
+          final errors = err['errors'];
+          if (serverMsg is String && serverMsg.isNotEmpty) {
+            message = serverMsg;
+          }
+          if (errors is List && errors.isNotEmpty) {
+            message = '$message\n- ${errors.join('\n- ')}';
+          }
+        }
+      } catch (_) {}
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Network error: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeColor = const Color(0xFF2563EB); // Indigo-600 vibe
 
     InputDecoration _input(String label, {IconData? icon, String? hint}) {
@@ -43,7 +128,10 @@ class CareerCounsellingFormScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Career Counselling',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
         backgroundColor: themeColor,
         elevation: 0,
@@ -230,7 +318,16 @@ class CareerCounsellingFormScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            icon: const Icon(Icons.send_rounded, size: 18),
+                            icon: _submitting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.send_rounded, size: 18),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: themeColor,
                               foregroundColor: Colors.white,
@@ -240,19 +337,11 @@ class CareerCounsellingFormScreen extends StatelessWidget {
                               ),
                               elevation: 2,
                             ),
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'Your request has been submitted!'),
-                                  ),
-                                );
-                                Navigator.pop(context);
-                              }
-                            },
+                            onPressed: _submitting ? null : _submit,
                             label: Text(
-                              'Book Counselling',
+                              _submitting
+                                  ? 'Submitting...'
+                                  : 'Book Counselling',
                               style: GoogleFonts.poppins(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,

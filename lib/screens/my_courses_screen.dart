@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'subject_list_screen.dart';
+import 'mycourses_chapters_screen.dart';
+import 'mycourses_chapter_detail_screen.dart';
 
 class MyCoursesScreen extends StatefulWidget {
   const MyCoursesScreen({super.key});
@@ -77,6 +80,8 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
             final descStr = (course['Description'] is String)
                 ? course['Description']
                 : (course['Description']?.toString() ?? '');
+            final courseId =
+                course['CourseID'] ?? course['id'] ?? course['course_id'];
 
             return Material(
               color: Colors.white,
@@ -85,7 +90,18 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
               borderRadius: BorderRadius.circular(14),
               child: InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: () {},
+                onTap: () {
+                  // Navigate to Subject List screen with courseId
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SubjectListScreen(
+                        courseId: courseId,
+                        trackTitle: nameStr,
+                      ),
+                    ),
+                  );
+                },
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Row(
@@ -254,20 +270,80 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
       appBar: AppBar(
         title: Text(
           'My Courses',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
         backgroundColor: Colors.blue[800],
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
         children: [
-          // Segmented tabs – improved depth and ripple
+          // Header panel to add hierarchy
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue[700]!, Colors.blue[900]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.18),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                )
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child:
+                      const Icon(Icons.menu_book_rounded, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Learning',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        'Browse your enrolled courses',
+                        style: GoogleFonts.inter(
+                          color: Colors.white.withOpacity(0.95),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Segmented tabs – refined visual
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Material(
               color: Colors.white,
-              elevation: 1,
-              shadowColor: Colors.black.withOpacity(0.04),
+              elevation: 0,
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 decoration: BoxDecoration(
@@ -298,11 +374,63 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
               future: _coursesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  // Lightweight skeleton while loading
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    itemCount: 6,
+                    itemBuilder: (context, index) => Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                    ),
+                  );
                 } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: \\${snapshot.error}'));
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline,
+                              color: Colors.redAccent, size: 40),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Failed to load courses',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${snapshot.error}',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('No courses found.'));
+                  return Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Center(
+                      child: Text(
+                        'No courses found.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: const Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
                 }
                 return _buildCoursesList(
                   snapshot.data!,

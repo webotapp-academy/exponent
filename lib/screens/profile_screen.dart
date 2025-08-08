@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../widgets/custom_bottom_nav_bar.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -16,21 +18,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   late Animation<double> _headerFadeAnimation;
   late Animation<Offset> _contentSlideAnimation;
 
-  // Enhanced user data
-  final Map<String, dynamic> userData = {
-    'name': 'Charu Saikia',
-    'grade': 'UKG',
-    'joinDate': 'March 2024',
-    'totalCourses': 5,
-    'completedCourses': 2,
-    'points': 1250,
-    'rank': 15,
-    'streak': 7,
-    'totalTime': '2h 45m',
-    'testsAttempted': 12,
-    'docsViewed': 24,
-    'isPremium': false,
-  };
+  Map<String, dynamic>? userData;
+  Future<void> _profileFuture = Future.value();
 
   // Enhanced activity data
   final List<Map<String, dynamic>> recentActivities = [
@@ -73,6 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.initState();
     _initializeAnimations();
     _startAnimations();
+    _profileFuture = fetchUserProfile();
   }
 
   void _initializeAnimations() {
@@ -119,195 +109,216 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.dispose();
   }
 
+  Future<void> fetchUserProfile() async {
+    // Replace with actual userId (e.g., from login/session)
+    const userId = 127;
+    final url = Uri.parse(
+        'https://indiawebdesigns.in/app/eduapp/user-app/get_user_profile.php?user_id=$userId');
+    final response = await http.get(url);
+    final body = response.body.trimLeft();
+    debugPrint('Profile API Response: $body');
+    final data = jsonDecode(body);
+    if (data['status'] == 'success') {
+      setState(() {
+        userData = data['user'];
+      });
+    } else {
+      debugPrint('Profile API error: ${data['message'] ?? 'Unknown error'}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Removed unused locals to satisfy lints
+
     return Scaffold(
-      body: DefaultTabController(
-        length: 3,
-        child: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverAppBar(
-              expandedHeight: 280,
-              floating: false,
-              pinned: true,
-              elevation: 0,
-              backgroundColor: Colors.blue[800],
-              flexibleSpace: FlexibleSpaceBar(
-                background: _buildEnhancedProfileHeader(),
-              ),
-              actions: [
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+      body: FutureBuilder<void>(
+        future: _profileFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting ||
+              userData == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final collapsedTitle = (userData?['Name'] as String?)?.trim();
+          return DefaultTabController(
+            length: 3,
+            child: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverAppBar(
+                  expandedHeight: 260, // slightly reduced for better fit
+                  floating: false,
+                  pinned: true,
+                  elevation: innerBoxIsScrolled ? 2 : 0,
+                  shadowColor:
+                      innerBoxIsScrolled ? Colors.black12 : Colors.transparent,
+                  surfaceTintColor: Colors.white,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.blue[900],
+                  title: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: innerBoxIsScrolled ? 1 : 0,
+                    child: Text(
+                      collapsedTitle?.isNotEmpty == true
+                          ? collapsedTitle!
+                          : 'Profile',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue[900],
+                      ),
                     ),
-                    child: const Icon(Icons.settings, color: Colors.white),
                   ),
-                  onPressed: () {},
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-            SliverPersistentHeader(
-              delegate: _SliverTabBarDelegate(
-                TabBar(
-                  labelStyle: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: _buildEnhancedProfileHeader(),
                   ),
-                  unselectedLabelStyle: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                  labelColor: Colors.blue[800],
-                  unselectedLabelColor: Colors.grey[600],
-                  indicatorColor: Colors.blue[800],
-                  indicatorWeight: 3,
-                  tabs: const [
-                    Tab(text: 'Overview'),
-                    Tab(text: 'Analysis'),
-                    Tab(text: 'Activity'),
+                  actions: [
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.settings, color: Colors.blue[900]),
+                      ),
+                      onPressed: () {},
+                    ),
+                    const SizedBox(width: 8),
                   ],
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(48),
+                    child: Container(
+                      color: Colors.white,
+                      child: TabBar(
+                        labelStyle: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        unselectedLabelStyle: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                        labelColor: Colors.blue[900],
+                        unselectedLabelColor: Colors.grey[600],
+                        indicator: UnderlineTabIndicator(
+                          borderSide: BorderSide(
+                            color: Colors.blue[900]!,
+                            width: 3,
+                          ),
+                        ),
+                        tabs: const [
+                          Tab(text: 'Overview'),
+                          Tab(text: 'Analysis'),
+                          Tab(text: 'Activity'),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
+              ],
+              body: TabBarView(
+                children: [
+                  _buildOverviewTab(),
+                  _buildEnhancedAnalysisTab(),
+                  _buildEnhancedActivityTab(),
+                ],
               ),
-              pinned: true,
             ),
-          ],
-          body: TabBarView(
-            children: [
-              _buildOverviewTab(),
-              _buildEnhancedAnalysisTab(),
-              _buildEnhancedActivityTab(),
-            ],
-          ),
-        ),
+          );
+        },
       ),
       bottomNavigationBar: const CustomBottomNavBar(currentIndex: 3),
     );
   }
 
   Widget _buildEnhancedProfileHeader() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.blue[700]!, Colors.blue[900]!],
+    if (userData == null) return const SizedBox.shrink();
+    // Rounded bottom for header
+    return ClipPath(
+      clipper: _HeaderClipper(),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.blue[700]!, Colors.blue[900]!],
+          ),
         ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: FadeTransition(
-            opacity: _headerFadeAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Profile Picture with Status Indicator
-                Stack(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                      ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.person,
-                          size: 60,
-                          color: Colors.blue[800],
-                        ),
-                      ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: FadeTransition(
+              opacity: _headerFadeAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Profile Picture
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
                     ),
-                    Positioned(
-                      bottom: 4,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: userData['isPremium']
-                              ? Colors.amber[600]
-                              : Colors.green[500],
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Icon(
-                          userData['isPremium'] ? Icons.diamond : Icons.check,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ),
+                    child: CircleAvatar(
+                      radius: 48,
+                      backgroundColor: Colors.white,
+                      backgroundImage: (userData?['profile_photo'] != null &&
+                              userData?['profile_photo'] != '')
+                          ? NetworkImage(userData?['profile_photo'])
+                          : null,
+                      child: (userData?['profile_photo'] == null ||
+                              userData?['profile_photo'] == '')
+                          ? Icon(
+                              Icons.person,
+                              size: 56,
+                              color: Colors.blue[800],
+                            )
+                          : null,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // User Info
-                Text(
-                  userData['name'],
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'EduRev ${userData['grade']} • Joined ${userData['joinDate']}',
+                  const SizedBox(height: 14),
+                  // Name
+                  Text(
+                    (userData?['Name'] ?? '').toString(),
                     style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 12,
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-
-                // Quick Stats
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildQuickStat(
-                        'Points', userData['points'].toString(), Icons.stars),
-                    _buildQuickStat(
-                        'Rank', '#${userData['rank']}', Icons.leaderboard),
-                    _buildQuickStat('Streak', '${userData['streak']} days',
-                        Icons.local_fire_department),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Action Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildActionButton(
-                      'Edit Profile',
-                      Icons.edit,
-                      () {},
-                      isPrimary: false,
+                  const SizedBox(height: 6),
+                  // Email chip
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    const SizedBox(width: 12),
-                    _buildActionButton(
-                      userData['isPremium'] ? 'Premium' : 'Upgrade',
-                      userData['isPremium'] ? Icons.diamond : Icons.upgrade,
-                      () {},
-                      isPrimary: true,
+                    child: Text(
+                      (userData?['Email'] ?? '').toString(),
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Quick stats
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildQuickStat('UserID',
+                          userData?['UserID']?.toString() ?? '', Icons.badge),
+                      _buildQuickStat('Phone', userData?['Userphone'] ?? '',
+                          Icons.phone_rounded),
+                      _buildQuickStat('Joined', userData?['CreatedAt'] ?? '',
+                          Icons.calendar_today_rounded),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
           ),
         ),
@@ -346,30 +357,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildActionButton(String text, IconData icon, VoidCallback onPressed,
-      {required bool isPrimary}) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(
-        text,
-        style: GoogleFonts.poppins(
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-        ),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isPrimary ? Colors.amber[600] : Colors.white,
-        foregroundColor: isPrimary ? Colors.white : Colors.blue[800],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25),
-        ),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      ),
-    );
-  }
-
   Widget _buildOverviewTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -378,16 +365,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Learning Progress Card
-            _buildLearningProgressCard(),
-            const SizedBox(height: 20),
-
-            // Achievements Section
-            _buildAchievementsSection(),
-            const SizedBox(height: 20),
-
-            // Current Courses
-            _buildCurrentCoursesSection(),
+            // Only dynamic content: Learning Progress Card (if userData available)
+            if (userData != null) _buildLearningProgressCard(),
           ],
         ),
       ),
@@ -395,254 +374,77 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildLearningProgressCard() {
-    double progressPercentage =
-        userData['completedCourses'] / userData['totalCourses'];
+    final completed = (userData?['completedCourses'] ?? 0) as num;
+    final total = (userData?['totalCourses'] ?? 1) as num;
+    final progress =
+        total > 0 ? (completed / total).clamp(0, 1).toDouble() : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.purple[400]!, Colors.purple[600]!],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.purple.withOpacity(0.3),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.trending_up, color: Colors.white, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                'Learning Progress',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${userData['completedCourses']}/${userData['totalCourses']} Courses',
-                      style: GoogleFonts.poppins(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Completed',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              CircularProgressIndicator(
-                value: progressPercentage,
-                backgroundColor: Colors.white.withOpacity(0.3),
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                strokeWidth: 6,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAchievementsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Recent Achievements',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          height: 120,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _buildAchievementCard('First Quiz', 'Completed your first quiz',
-                  Icons.quiz, Colors.green[400]!),
-              _buildAchievementCard('Video Watcher', 'Watched 10 video lessons',
-                  Icons.play_circle, Colors.blue[400]!),
-              _buildAchievementCard('Streak Master', '7-day learning streak',
-                  Icons.local_fire_department, Colors.orange[400]!),
-              _buildAchievementCard(
-                  'Quick Learner',
-                  'Completed course in 1 week',
-                  Icons.speed,
-                  Colors.purple[400]!),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAchievementCard(
-      String title, String description, IconData icon, Color color) {
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-          Text(
-            description,
-            style: GoogleFonts.poppins(
-              fontSize: 10,
-              color: Colors.grey[600],
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCurrentCoursesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Current Courses',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                'View All',
-                style: GoogleFonts.poppins(
-                  color: Colors.blue[800],
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildCourseProgressCard('Maths for UKG', 0.75, Colors.purple[400]!),
-        const SizedBox(height: 12),
-        _buildCourseProgressCard('English for UKG', 0.90, Colors.teal[400]!),
-        const SizedBox(height: 12),
-        _buildCourseProgressCard('EVS for UKG', 0.45, Colors.green[400]!),
-      ],
-    );
-  }
-
-  Widget _buildCourseProgressCard(
-      String courseName, double progress, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+          // Radial progress ring
+          SizedBox(
+            height: 84,
+            width: 84,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CircularProgressIndicator(
+                  value: 1,
+                  strokeWidth: 8,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.grey.shade200),
+                ),
+                CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 8,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.purple[400]!),
+                  backgroundColor: Colors.transparent,
+                ),
+                Center(
+                  child: Text(
+                    '${(progress * 100).toInt()}%(',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: Icon(Icons.book, color: color, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  courseName,
+                  'Learning Progress',
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Colors.grey[800],
                   ),
                 ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.grey[200],
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
-                  '${(progress * 100).toInt()}% Complete',
+                  '$completed of $total courses completed',
                   style: GoogleFonts.poppins(
-                    fontSize: 10,
+                    fontSize: 12,
                     color: Colors.grey[600],
                   ),
                 ),
@@ -675,114 +477,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildMyExamSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'My Exam',
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.school, color: Colors.blue[800], size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'UKG (Upper Kindergarten)',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    Text(
-                      'Foundation level curriculum',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[800],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    'Explore',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.blue[800]!),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    'View Plans',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue[800],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+    return const SizedBox.shrink(); // Remove static exam section
   }
 
   Widget _buildEnhancedLearningAnalysis() {
+    final isWide = MediaQuery.of(context).size.width > 600;
+    final crossAxisCount = isWide ? 3 : 2;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -795,41 +496,39 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
         const SizedBox(height: 16),
-
-        // Grid of analysis cards
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
+          crossAxisCount: crossAxisCount,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 1.1,
+          childAspectRatio: isWide ? 1.2 : 1.1,
           children: [
             _buildEnhancedAnalysisCard(
               icon: Icons.document_scanner,
               title: 'Docs & Videos',
-              value: userData['docsViewed'].toString(),
+              value: userData?['docsViewed']?.toString() ?? '0',
               subtitle: 'viewed',
               color: Colors.teal[400]!,
             ),
             _buildEnhancedAnalysisCard(
               icon: Icons.checklist,
               title: 'Tests',
-              value: userData['testsAttempted'].toString(),
+              value: userData?['testsAttempted']?.toString() ?? '0',
               subtitle: 'attempted',
               color: Colors.orange[400]!,
             ),
             _buildEnhancedAnalysisCard(
               icon: Icons.timer,
               title: 'Learning Time',
-              value: userData['totalTime'],
+              value: userData?['totalTime'] ?? '0',
               subtitle: 'total',
               color: Colors.purple[400]!,
             ),
             _buildEnhancedAnalysisCard(
               icon: Icons.local_fire_department,
               title: 'Streak',
-              value: userData['streak'].toString(),
+              value: userData?['streak']?.toString() ?? '0',
               subtitle: 'days',
               color: Colors.red[400]!,
             ),
@@ -846,48 +545,56 @@ class _ProfileScreenState extends State<ProfileScreen>
     required String subtitle,
     required Color color,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 0,
+      child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+        onTap: () {},
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey[800],
+                ),
+              ),
+              Text(
+                '$title $subtitle',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
-          ),
-          Text(
-            '$title $subtitle',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -908,7 +615,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 color: Colors.grey[800],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (recentActivities.isEmpty)
               _buildEmptyActivityState()
             else
@@ -1030,28 +737,22 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 }
 
-class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-
-  _SliverTabBarDelegate(this.tabBar);
-
+class _HeaderClipper extends CustomClipper<Path> {
   @override
-  double get minExtent => tabBar.preferredSize.height;
-
-  @override
-  double get maxExtent => tabBar.preferredSize.height;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Colors.white,
-      child: tabBar,
+  Path getClip(Size size) {
+    final path = Path();
+    path.lineTo(0, size.height - 40);
+    path.quadraticBezierTo(
+      size.width / 2,
+      size.height,
+      size.width,
+      size.height - 40,
     );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
   }
 
   @override
-  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
-    return false;
-  }
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

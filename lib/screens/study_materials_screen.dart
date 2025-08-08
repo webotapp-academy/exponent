@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'subjects_list_screen.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
 
 class StudyMaterialsScreen extends StatefulWidget {
@@ -46,7 +47,6 @@ class _StudyMaterialsScreenState extends State<StudyMaterialsScreen>
   late Future<List<dynamic>> _subjectsFuture;
 
   // Only one initState should exist
-  @override
   Future<List<dynamic>> fetchSubjects() async {
     final response = await http.get(
       Uri.parse(
@@ -92,113 +92,142 @@ class _StudyMaterialsScreenState extends State<StudyMaterialsScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text('Class Preview',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF14B8A6),
+        title: Text('Study Materials',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.blue[800],
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Column(
-        children: [
-          Expanded(
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: _buildHero()),
+          SliverToBoxAdapter(child: _buildQuickActions()),
+          SliverToBoxAdapter(child: const SizedBox(height: 8)),
+          // Constrain featured section to avoid overflow and unnecessary build
+          SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Subjects',
-                      style: GoogleFonts.poppins(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal[900])),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: FutureBuilder<List<dynamic>>(
-                      future: _subjectsFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        } else if (snapshot.hasError) {
-                          return Center(
-                              child: Text('Error: \\${snapshot.error}'));
-                        } else if (!snapshot.hasData ||
-                            snapshot.data!.isEmpty) {
-                          return const Center(
-                              child: Text('No subjects found.'));
-                        }
-                        final subjects = snapshot.data!;
-                        return GridView.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 1.2,
-                          ),
-                          itemCount: subjects.length,
-                          itemBuilder: (context, index) {
-                            final subject = subjects[index];
-                            final color = subject['Color'] != null &&
-                                    subject['Color'].toString().isNotEmpty
-                                ? _parseColor(subject['Color'])
-                                : Colors.teal[400];
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => WatchVideosScreen(
-                                      subjectId: subject['Id'],
-                                      subjectName: subject['Name'],
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: (color ?? Colors.teal[400]!)
-                                      .withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: (color ?? Colors.teal[400]!)
-                                          .withOpacity(0.08),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(_getSubjectIcon(subject['Icon']),
-                                        color: color, size: 40),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      subject['Name'],
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                        color: Colors.teal[900],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildFeaturedMaterialsSection(),
             ),
           ),
-          CustomBottomNavBar(currentIndex: 2),
         ],
+      ),
+      bottomNavigationBar: CustomBottomNavBar(currentIndex: 2),
+    );
+  }
+
+  Widget _buildCard(String title, IconData icon, Color color) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SubjectsListScreen(trackTitle: title),
+            ),
+          );
+        },
+        child: Container(
+          width: 180,
+          // Increase height to give more vertical room for icon/title/subtitle.
+          height: 170,
+          // Increase padding slightly so text doesn't sit too close to edges.
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color.withOpacity(0.85), color],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.25),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // icon badge - slightly smaller and nudged away from text area
+              Positioned(
+                top: 6,
+                left: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.20),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 24),
+                ),
+              ),
+              // title & subtitle - pushed a bit lower to avoid overlap with icon
+              Positioned.fill(
+                top: 38,
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Slightly smaller title and with shadow for readability
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            )
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: 140,
+                        child: Text(
+                          'Curated subjects • PDF/Notes',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // CTA chevron
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.arrow_forward_rounded,
+                      color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -533,39 +562,52 @@ class _StudyMaterialsScreenState extends State<StudyMaterialsScreen>
   }
 
   Widget _buildFeaturedMaterialsSection() {
-    return Container(
-      margin: const EdgeInsets.all(20),
+    // Ensure fixed heights to avoid RenderFlex overflow, and reduce shadows for perf
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Featured Materials',
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0F172A),
-                ),
-              ),
-              TextButton(
-                onPressed: () {},
-                child: Text(
-                  'View All',
+          // Header row with smaller tap target
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Featured Materials',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF14B8A6),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
                   ),
                 ),
-              ),
-            ],
+                TextButton(
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 0),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () {},
+                  child: Text(
+                    'View All',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF14B8A6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           SizedBox(
-            height: 200,
+            height: 190, // reduce height to avoid bottom overflow
             child: ListView.builder(
+              padding: const EdgeInsets.only(right: 16),
+              physics: const BouncingScrollPhysics(),
               scrollDirection: Axis.horizontal,
               itemCount: 4,
               itemBuilder: (context, index) {
@@ -603,137 +645,127 @@ class _StudyMaterialsScreenState extends State<StudyMaterialsScreen>
     final materialTypes = ['PDF Notes', 'Worksheet', 'Summary', 'Practice Set'];
     final pageCounts = ['12 pages', '8 pages', '6 pages', '15 pages'];
 
+    // Lighter card to reduce overdraw and prevent overflow
     return Container(
-      width: 260,
-      margin: const EdgeInsets.only(right: 16),
+      width: 240,
+      margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: colors[index].withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: colors[index].withOpacity(0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {},
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colors[index].withOpacity(0.8),
-                      colors[index],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {},
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Fixed top banner height to keep whole card within 190 container
+            Container(
+              height: 90,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [colors[index].withOpacity(0.8), colors[index]],
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(14),
+                  topRight: Radius.circular(14),
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _getMaterialIcon(materialTypes[index]),
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.92),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        materialTypes[index],
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: colors[index],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Content kept compact to avoid overflow warning
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titles[index],
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    descriptions[index],
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF64748B),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(Icons.description_outlined,
+                          size: 14, color: colors[index]),
+                      const SizedBox(width: 4),
+                      Text(
+                        pageCounts[index],
+                        style: GoogleFonts.inter(
+                            fontSize: 11, color: const Color(0xFF64748B)),
+                      ),
+                      const Spacer(),
+                      Icon(Icons.download_outlined,
+                          size: 16, color: colors[index]),
                     ],
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          _getMaterialIcon(materialTypes[index]),
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          materialTypes[index],
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: colors[index],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      titles[index],
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF0F172A),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      descriptions[index],
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF64748B),
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.description_outlined,
-                          size: 14,
-                          color: colors[index],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          pageCounts[index],
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                        const Spacer(),
-                        Icon(
-                          Icons.download_outlined,
-                          size: 16,
-                          color: colors[index],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -984,6 +1016,101 @@ class _StudyMaterialsScreenState extends State<StudyMaterialsScreen>
             ),
           ),
         ));
+  }
+
+  Widget _buildHero() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF14B8A6).withOpacity(0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.auto_stories_rounded,
+                color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Study Materials',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Choose your track to explore subjects',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withOpacity(0.95),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Browse',
+              style: GoogleFonts.inter(
+                  color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    // Increase vertical space and spacing to avoid text/icon overlap.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: SizedBox(
+        height: 180,
+        child: Row(
+          children: [
+            Expanded(
+              child:
+                  _buildCard('Class 12', Icons.school, const Color(0xFF14B8A6)),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildCard(
+                  'NEET', Icons.medical_services, const Color(0xFF8B5CF6)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

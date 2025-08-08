@@ -15,23 +15,52 @@ class LoginScreen extends HookWidget {
     final phoneController = useTextEditingController();
     final isLoading = useState(false);
 
-    // Route to OTP screen with phone number
-    void goToOtpScreen() {
-      if (phoneController.text.isEmpty) {
+    // Login API endpoint
+    const apiUrl = 'https://indiawebdesigns.in/app/eduapp/user-app/login.php';
+
+    Future<void> handleLogin() async {
+      final phone = phoneController.text.trim();
+      debugPrint('Login input phone: $phone'); // <-- Debug print input
+      if (phone.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Please enter your phone number')),
         );
         return;
       }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OtpScreen(phone: phoneController.text),
-        ),
-      );
+      isLoading.value = true;
+      try {
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'Phone': phone, 'Userphone': phone}),
+        );
+        debugPrint(
+            'Login API response: ${response.body}'); // <-- Debug print response
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          // Pass only phone to OTP screen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OtpScreen(
+                phone: phone,
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? 'Login failed')),
+          );
+        }
+      } catch (e) {
+        debugPrint('Login error: $e'); // <-- Debug print error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Network error: $e')),
+        );
+      } finally {
+        isLoading.value = false;
+      }
     }
-
-    // No inline OTP logic here; handled in OtpScreen
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -122,7 +151,7 @@ class LoginScreen extends HookWidget {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: goToOtpScreen,
+                      onPressed: isLoading.value ? null : handleLogin,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1A3A6C),
                         shape: RoundedRectangleBorder(
@@ -134,8 +163,17 @@ class LoginScreen extends HookWidget {
                           fontSize: 16,
                         ),
                       ),
-                      child: Text('Continue',
-                          style: GoogleFonts.poppins(color: Colors.white)),
+                      child: isLoading.value
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Text('Continue',
+                              style: GoogleFonts.poppins(color: Colors.white)),
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -223,41 +261,6 @@ class LoginScreen extends HookWidget {
         ),
         contentPadding:
             const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-      ),
-    );
-  }
-
-  Widget _buildSocialLoginButton({
-    String? icon,
-    Widget? iconWidget,
-    required String text,
-    required VoidCallback onPressed,
-    Color backgroundColor = Colors.white,
-    Color textColor = Colors.black87,
-  }) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(double.infinity, 50),
-        backgroundColor: backgroundColor,
-        side: BorderSide(color: Colors.grey[300]!),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (iconWidget != null) iconWidget,
-          if (iconWidget != null) const SizedBox(width: 10),
-          Text(
-            text,
-            style: GoogleFonts.poppins(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }

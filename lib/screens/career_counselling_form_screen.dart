@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CareerCounsellingFormScreen extends StatefulWidget {
   const CareerCounsellingFormScreen({super.key});
@@ -27,6 +28,37 @@ class _CareerCounsellingFormScreenState
     emailController.dispose();
     messageController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillFromPrefs();
+  }
+
+  Future<void> _prefillFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedName = (prefs.getString('name') ?? '').trim();
+      final savedPhone = (prefs.getString('phone') ??
+              prefs.getString('Userphone') ??
+              prefs.getString('Phone') ??
+              '')
+          .trim();
+      final savedEmail = (prefs.getString('email') ?? '').trim();
+
+      if (savedName.isNotEmpty && nameController.text.trim().isEmpty) {
+        nameController.text = savedName;
+      }
+      if (savedPhone.isNotEmpty && phoneController.text.trim().isEmpty) {
+        phoneController.text = savedPhone;
+      }
+      if (savedEmail.isNotEmpty && emailController.text.trim().isEmpty) {
+        emailController.text = savedEmail;
+      }
+    } catch (_) {
+      // ignore
+    }
   }
 
   Future<void> _submit() async {
@@ -97,15 +129,37 @@ class _CareerCounsellingFormScreenState
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = const Color(0xFF2563EB); // Indigo-600 vibe
+    final themeColor =
+        const Color(0xFF1A3A6C); // Align accent with dashboard theme
 
     InputDecoration _input(String label, {IconData? icon, String? hint}) {
       return InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: icon != null ? Icon(icon) : null,
+        labelStyle: GoogleFonts.poppins(
+          color: const Color(0xFF64748B),
+          fontSize: 13,
+        ),
+        hintStyle: GoogleFonts.poppins(
+          color: const Color(0xFF94A3B8),
+          fontSize: 12,
+        ),
+        prefixIcon: icon == null
+            ? null
+            : Container(
+                margin: const EdgeInsets.only(left: 8, right: 6),
+                decoration: BoxDecoration(
+                  color: themeColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                width: 40,
+                child: Icon(icon, color: themeColor),
+              ),
+        prefixIconConstraints:
+            const BoxConstraints(minWidth: 46, minHeight: 46),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFFF8FAFC),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         border: OutlineInputBorder(
@@ -118,83 +172,115 @@ class _CareerCounsellingFormScreenState
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: themeColor, width: 1.4),
+          borderSide: BorderSide(color: themeColor, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFF43F5E), width: 1.2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFF43F5E), width: 1.4),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.grey[900]),
         title: Text(
-          'Career Counselling',
+          'Exponent Classes',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: Colors.grey[900],
+            fontSize: 16,
           ),
         ),
-        backgroundColor: themeColor,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.notifications_none_rounded),
+            tooltip: 'Notifications',
+          ),
+          const SizedBox(width: 4),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: CircleAvatar(
+              radius: 14,
+              backgroundColor: Colors.blue[50],
+              child: Icon(Icons.person, size: 18, color: Colors.blue[700]),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Hero header
+            // Header panel aligned to dashboard pattern
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [themeColor, const Color(0xFF1E40AF)],
+                gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
+                  colors: [Color(0xFF1A3A6C), Color(0xFF3D6DB5)],
                 ),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: themeColor.withOpacity(0.25),
+                    color: const Color(0xFF1A3A6C).withOpacity(0.25),
                     blurRadius: 16,
-                    offset: const Offset(0, 8),
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: const Icon(Icons.support_agent,
-                        color: Colors.white, size: 36),
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Book Free Counselling',
+                          'Career Counselling',
                           style: GoogleFonts.poppins(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Get guidance on courses, exams, and career paths from our experts.',
+                          'Book a free session and get expert guidance',
                           style: GoogleFonts.poppins(
                             color: Colors.white.withOpacity(0.95),
-                            fontSize: 12.5,
-                            height: 1.35,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
+                  ),
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.support_agent,
+                        color: Colors.blue[700], size: 32),
                   ),
                 ],
               ),
@@ -202,7 +288,7 @@ class _CareerCounsellingFormScreenState
 
             // Form card
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: Card(
                 elevation: 6,
                 shadowColor: Colors.black.withOpacity(0.08),
@@ -210,15 +296,25 @@ class _CareerCounsellingFormScreenState
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                   child: Form(
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     key: _formKey,
                     child: Column(
                       children: [
                         // Section title
                         Row(
                           children: [
-                            Icon(Icons.edit_calendar, color: themeColor),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color:
+                                    const Color(0xFF1A3A6C).withOpacity(0.10),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit_calendar,
+                                  color: Color(0xFF1A3A6C), size: 18),
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Your Details',
@@ -234,6 +330,11 @@ class _CareerCounsellingFormScreenState
 
                         TextFormField(
                           controller: nameController,
+                          textCapitalization: TextCapitalization.words,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: const Color(0xFF0F172A),
+                          ),
                           decoration: _input(
                             'Full Name',
                             icon: Icons.person_outline,
@@ -247,12 +348,16 @@ class _CareerCounsellingFormScreenState
 
                         TextFormField(
                           controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: const Color(0xFF0F172A),
+                          ),
                           decoration: _input(
                             'Phone Number',
                             icon: Icons.phone,
                             hint: '10-digit mobile number',
                           ),
-                          keyboardType: TextInputType.phone,
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
                               return 'Please enter your phone number';
@@ -267,17 +372,26 @@ class _CareerCounsellingFormScreenState
 
                         TextFormField(
                           controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: const Color(0xFF0F172A),
+                          ),
                           decoration: _input(
                             'Email (optional)',
                             icon: Icons.email_outlined,
                             hint: 'you@example.com',
                           ),
-                          keyboardType: TextInputType.emailAddress,
                         ),
                         const SizedBox(height: 14),
 
                         TextFormField(
                           controller: messageController,
+                          textCapitalization: TextCapitalization.sentences,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: const Color(0xFF0F172A),
+                          ),
                           decoration: _input(
                             'How can we help? (optional)',
                             icon: Icons.message_outlined,
@@ -358,10 +472,10 @@ class _CareerCounsellingFormScreenState
             ),
 
             // Small footer support
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+            Center(
               child: Text(
-                'Need immediate help? Write to support@exponent.edu',
+                'Need immediate help? \n Write to support@exponent.edu',
+                textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: const Color(0xFF6B7280),

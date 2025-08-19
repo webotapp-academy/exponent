@@ -211,7 +211,9 @@ class _SubjectListScreenState extends State<SubjectListScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => MyCoursesChaptersScreen(
-                            courseName: title,
+                            subjectName: title,
+                            courseLabel:
+                                widget.trackTitle, // e.g., "Class 12" or "NEET"
                             isNeet: widget.trackTitle
                                 .toLowerCase()
                                 .contains('neet'),

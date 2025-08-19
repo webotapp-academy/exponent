@@ -3,8 +3,10 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
-import 'signup_screen.dart';
 
 class OtpScreen extends HookWidget {
   final String phone;
@@ -13,22 +15,175 @@ class OtpScreen extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final otpController = useTextEditingController();
-    final isLoading = useState(false);
+    final isResending = useState(false);
+    final secondsRemaining = useState<int>(0);
+    final isVerifying = useState(false);
 
-    void goToHomeScreen() {
-      if (otpController.text.isEmpty) {
+    // APIs
+    const loginApiUrl =
+        'https://indiawebdesigns.in/app/eduapp/user-app/login.php';
+    const verifyApiUrl =
+        'https://indiawebdesigns.in/app/eduapp/user-app/verify_otp.php';
+
+    // Cooldown timer for resend button
+    useEffect(() {
+      Timer? timer;
+      if (secondsRemaining.value > 0) {
+        timer = Timer.periodic(const Duration(seconds: 1), (t) {
+          if (secondsRemaining.value <= 1) {
+            t.cancel();
+            secondsRemaining.value = 0;
+          } else {
+            secondsRemaining.value = secondsRemaining.value - 1;
+          }
+        });
+      }
+      return () => timer?.cancel();
+    }, [secondsRemaining.value]);
+
+    Future<void> resendOtp() async {
+      if (secondsRemaining.value > 0 || isResending.value) return;
+      isResending.value = true;
+      try {
+        final payload = {'Phone': phone, 'Userphone': phone};
+        debugPrint('[RESEND_OTP] → POST $loginApiUrl');
+        debugPrint('[RESEND_OTP] Payload: ${jsonEncode(payload)}');
+
+        final response = await http.post(
+          Uri.parse(loginApiUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        );
+
+        debugPrint('[RESEND_OTP] ← Status: ${response.statusCode}');
+        debugPrint('[RESEND_OTP] Response: ${response.body}');
+
+        Map<String, dynamic> data;
+        try {
+          data = jsonDecode(response.body) as Map<String, dynamic>;
+        } catch (e) {
+          debugPrint('[RESEND_OTP] JSON decode error: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Invalid server response',
+                    style: GoogleFonts.poppins())),
+          );
+          return;
+        }
+
+        if (response.statusCode == 200 && data['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('OTP resent successfully',
+                    style: GoogleFonts.poppins())),
+          );
+          secondsRemaining.value = 30; // cooldown
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(
+                    data['message']?.toString() ?? 'Failed to resend OTP',
+                    style: GoogleFonts.poppins())),
+          );
+        }
+      } catch (e) {
+        debugPrint('[RESEND_OTP] Error: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please enter the OTP')),
+          SnackBar(
+              content: Text('Network error: $e', style: GoogleFonts.poppins())),
+        );
+      } finally {
+        isResending.value = false;
+      }
+    }
+
+    Future<void> verifyOtp() async {
+      final otp = otpController.text.trim();
+      if (otp.length != 4) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Please enter the 4-digit OTP',
+                  style: GoogleFonts.poppins())),
         );
         return;
       }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(userData: {'Userphone': phone}),
-        ),
-      );
+      isVerifying.value = true;
+      try {
+        final payload = {'phone': phone, 'otp': otp};
+        debugPrint('[VERIFY_OTP] → POST $verifyApiUrl');
+        debugPrint('[VERIFY_OTP] Payload: ${jsonEncode(payload)}');
+
+        final response = await http.post(
+          Uri.parse(verifyApiUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        );
+
+        debugPrint('[VERIFY_OTP] ← Status: ${response.statusCode}');
+        debugPrint('[VERIFY_OTP] Response: ${response.body}');
+
+        Map<String, dynamic> data;
+        try {
+          data = jsonDecode(response.body) as Map<String, dynamic>;
+        } catch (e) {
+          debugPrint('[VERIFY_OTP] JSON decode error: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Invalid server response',
+                    style: GoogleFonts.poppins())),
+          );
+          return;
+        }
+
+        if (response.statusCode == 200 && data['status'] == 'success') {
+          // Save to SharedPreferences (guarded)
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('isLoggedIn', true);
+            await prefs.setString(
+                'phone', data['user']['Phone']?.toString() ?? phone);
+            await prefs.setString(
+                'userId', (data['user']['UserID'] ?? '').toString());
+            await prefs.setString(
+                'name', data['user']['Name']?.toString() ?? '');
+            await prefs.setString(
+                'email', data['user']['Email']?.toString() ?? '');
+            await prefs.setString(
+                'userType', data['user']['UserType']?.toString() ?? '');
+            await prefs.setString(
+                'courses', data['user']['Courses']?.toString() ?? '');
+            debugPrint('[VERIFY_OTP] SharedPreferences saved successfully');
+          } catch (e) {
+            debugPrint('[VERIFY_OTP] SharedPreferences error: $e');
+          }
+
+          if (!context.mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  HomeScreen(userData: data['user'] ?? {'Userphone': phone}),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(data['message']?.toString() ?? 'Invalid OTP',
+                    style: GoogleFonts.poppins())),
+          );
+        }
+      } catch (e) {
+        debugPrint('[VERIFY_OTP] Error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Network error: $e', style: GoogleFonts.poppins())),
+        );
+      } finally {
+        isVerifying.value = false;
+      }
     }
+
+    final isOtpComplete = otpController.text.length == 4;
 
     return Scaffold(
       body: Container(
@@ -82,7 +237,7 @@ class OtpScreen extends HookWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Enter the OTP sent to your phone number',
+                    'Enter the 4-digit OTP sent to',
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w400,
                       fontSize: 15,
@@ -111,12 +266,24 @@ class OtpScreen extends HookWidget {
                       child: TextField(
                         controller: otpController,
                         keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(4),
+                        ],
                         style: GoogleFonts.poppins(
-                            fontSize: 18, fontWeight: FontWeight.w600),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 8,
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Enter OTP',
+                          hintText: '____',
+                          counterText: '',
                           hintStyle: GoogleFonts.poppins(color: Colors.grey),
                           prefixIcon: Icon(Icons.lock, color: Colors.grey),
+                          suffixIcon: isOtpComplete
+                              ? Icon(Icons.check_circle, color: Colors.green)
+                              : null,
                           filled: true,
                           fillColor: Colors.grey[100],
                           border: OutlineInputBorder(
@@ -124,8 +291,12 @@ class OtpScreen extends HookWidget {
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 15),
+                              vertical: 18, horizontal: 15),
                         ),
+                        onChanged: (_) {
+                          // Trigger rebuild for suffix icon state update
+                          (context as Element).markNeedsBuild();
+                        },
                       ),
                     ),
                   ),
@@ -134,7 +305,9 @@ class OtpScreen extends HookWidget {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: goToHomeScreen,
+                      onPressed: isOtpComplete && !isVerifying.value
+                          ? verifyOtp
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1A3A6C),
                         shape: RoundedRectangleBorder(
@@ -146,23 +319,32 @@ class OtpScreen extends HookWidget {
                           fontSize: 16,
                         ),
                       ),
-                      child: Text('Verify OTP',
-                          style: GoogleFonts.poppins(color: Colors.white)),
+                      child: isVerifying.value
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text('Verify OTP',
+                              style: GoogleFonts.poppins(color: Colors.white)),
                     ),
                   ),
                   const SizedBox(height: 18),
                   TextButton(
-                    onPressed: () {
-                      // Add resend OTP logic here
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text('Resend OTP feature coming soon!')),
-                      );
-                    },
+                    onPressed: (secondsRemaining.value > 0 || isResending.value)
+                        ? null
+                        : resendOtp,
                     child: Text(
-                      'Resend OTP',
+                      secondsRemaining.value > 0
+                          ? 'Resend OTP (${secondsRemaining.value}s)'
+                          : 'Resend OTP',
                       style: GoogleFonts.poppins(
-                        color: Colors.blue[800],
+                        color: (secondsRemaining.value > 0 || isResending.value)
+                            ? Colors.grey
+                            : Colors.blue[800],
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                       ),

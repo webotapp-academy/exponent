@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Independence Day Photo Generator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTML2Canvas for image generation -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- Font Awesome for sharing icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+            font-size: 24px;
+        }
+        #errorModal, #debugModal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        #errorModalContent, #debugModalContent {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        #debugOutput {
+            text-align: left;
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: scroll;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        #generatedImageContainer {
+            background-size: cover !important;
+            background-position: center !important;
+            image-rendering: -webkit-optimize-contrast; /* Webkit browsers */
+            image-rendering: crisp-edges; /* Firefox */
+            -ms-interpolation-mode: nearest-neighbor; /* IE (if applicable) */
+            background-repeat: no-repeat;
+            position: relative;
+            width: 100%;
+            padding-top: 100%; /* Creates a square aspect ratio */
+            overflow: hidden;
+        }
+        #generatedImageContainer > div {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+        }
+        #confettiCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex items-center justify-center p-4">
+    <!-- Error Modal -->
+    <div id="errorModal">
+        <div id="errorModalContent" class="bg-white rounded-lg shadow-xl p-6">
+            <h2 id="errorTitle" class="text-xl font-bold text-red-600 mb-4">Error</h2>
+            <p id="errorMessage" class="text-gray-700 mb-4">An unknown error occurred.</p>
+            <button 
+                onclick="closeErrorModal()" 
+                class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition duration-300"
+            >
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Debug Modal -->
+    <div id="debugModal">
+        <div id="debugModalContent" class="bg-white rounded-lg shadow-xl p-6">
+            <h2 class="text-xl font-bold text-blue-600 mb-4">Debug Information</h2>
+            <div id="debugOutput"></div>
+            <button 
+                onclick="closeDebugModal()" 
+                class="w-full mt-4 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300"
+            >
+                Close
+            </button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-md bg-white rounded-xl shadow-2xl p-6">
+        <!-- Name Input Section -->
+        <div id="nameInputSection" class="space-y-4">
+            <h1 class="text-2xl font-bold text-center text-blue-900 mb-4">
+                Celebrate Independence Day with WeBotApp Academy
+            </h1>
+            <input 
+                type="text" 
+                id="nameInput" 
+                placeholder="Enter Your Name" 
+                class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
+                oninput="this.value = this.value.replace(/\b\w/g, l => l.toUpperCase())"
+            >
+            <button 
+                onclick="generateImage()" 
+                class="w-full bg-blue-600 text-white py-1 px-2 text-sm rounded-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center space-x-1"
+            >
+                <i class="fas fa-image"></i>
+                <span>Generate Photo</span>
+            </button>
+        </div>
+
+        <!-- Image Generation Section (Hidden by default) -->
+        <div id="imageGenerationSection" class="hidden">
+            <div 
+                id="generatedImageContainer" 
+                class="relative w-full aspect-square bg-cover bg-center rounded-lg shadow-lg mb-4"
+            >
+                <div 
+                    style="background-image: url('ind2.jpg');"
+                    class="absolute inset-0 bg-cover bg-center"
+                ></div>
+                <div 
+                    id="nameOverlay" 
+                    class="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-black text-center text-[10px] drop-shadow-lg whitespace-normal overflow-hidden text-ellipsis max-w-full px-2"
+                >
+                    <!-- Name will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <div class="flex space-x-4">
+                <button 
+                    id="downloadBtn"
+                    onclick="downloadImage()" 
+                    class="flex-1 bg-green-600 text-white py-1 px-2 text-sm rounded-lg hover:bg-green-700 transition duration-300 flex items-center justify-center space-x-1"
+                >
+                    <i class="fas fa-download"></i>
+                    <span>Download</span>
+                </button>
+                <button 
+                    id="shareBtn"
+                    onclick="shareImage()" 
+                    class="flex-1 bg-blue-500 text-white py-1 px-2 text-sm rounded-lg hover:bg-blue-600 transition duration-300 flex items-center justify-center space-x-1"
+                >
+                    <i class="fas fa-share-alt"></i>
+                    <span>Share</span>
+                </button>
+            </div>
+            <button 
+                onclick="resetGenerator()" 
+                class="w-full mt-2 bg-gray-200 text-gray-800 py-1 px-2 text-sm rounded-lg hover:bg-gray-300 transition duration-300"
+            >
+                Generate Another
+            </button>
+        </div>
+    </div>
+
+    <!-- Add footer -->
+    <footer class="fixed bottom-0 left-0 w-full bg-blue-900 text-white text-center py-2 text-xs">
+        WebApp Academy is a Premium Institute to Learn Web Development, Mobile App Development, and Digital Marketing Courses
+    </footer>
+
+    <script>
+        // Logging function
+        function debugLog(message) {
+            const debugOutput = document.getElementById('debugOutput');
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            debugOutput.appendChild(logEntry);
+            // Comment out console.log and remove debug modal show
+            // console.log(message);
+        }
+
+        // Error Modal Functions
+        function showErrorModal(title, message) {
+            const errorModal = document.getElementById('errorModal');
+            const errorTitle = document.getElementById('errorTitle');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            errorTitle.textContent = title;
+            errorMessage.textContent = message;
+            errorModal.style.display = 'block';
+        }
+
+        function closeErrorModal() {
+            const errorModal = document.getElementById('errorModal');
+            errorModal.style.display = 'none';
+        }
+
+        // Debug Modal Functions
+        function showDebugModal() {
+            const debugModal = document.getElementById('debugModal');
+            debugModal.style.display = 'block';
+        }
+
+        function closeDebugModal() {
+            const debugModal = document.getElementById('debugModal');
+            debugModal.style.display = 'none';
+        }
+
+        // Function to trigger confetti
+        function triggerConfetti() {
+            const duration = 5 * 1000; // 5 seconds
+            const animationEnd = Date.now() + duration;
+            const defaults = { 
+                startVelocity: 30, 
+                spread: 360, 
+                ticks: 60, 
+                zIndex: 9999 
+            };
+
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            const interval = setInterval(function() {
+                const timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                const particleCount = 50 * (timeLeft / duration);
+                
+                // Main confetti
+                confetti(Object.assign({}, defaults, { 
+                    particleCount, 
+                    origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+                    colors: ['#a864fd', '#29cdff', '#78ff44', '#ff718d', '#fdff6a']
+                }));
+                confetti(Object.assign({}, defaults, { 
+                    particleCount, 
+                    origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+                    colors: ['#a864fd', '#29cdff', '#78ff44', '#ff718d', '#fdff6a']
+                }));
+            }, 250);
+        }
+
+        function logName(name) {
+            // Send name to PHP script via AJAX
+            fetch('log_independence_names.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `name=${encodeURIComponent(name)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    debugLog('Name logged successfully');
+                } else {
+                    debugLog('Failed to log name');
+                }
+            })
+            .catch(error => {
+                debugLog(`Error logging name: ${error.message}`);
+            });
+        }
+
+        function generateImage() {
+            const name = document.getElementById('nameInput').value.trim();
+            
+            if (!name) {
+                showErrorModal('Input Error', 'Please enter your name');
+                return;
+            }
+
+            // Debug logging
+            debugLog(`Generating image for name: ${name}`);
+
+            // Log the name
+            logName(name);
+
+            // Hide name input section
+            document.getElementById('nameInputSection').classList.add('hidden');
+            
+            // Show image generation section
+            document.getElementById('imageGenerationSection').classList.remove('hidden');
+            
+            // Insert personalized message
+            document.getElementById('nameOverlay').innerHTML = `${name} wishes you a <br>very Happy Independence Day!`;
+
+            // Trigger confetti
+            triggerConfetti();
+        }
+
+        function downloadImage() {
+            const container = document.getElementById('generatedImageContainer');
+            
+            // Disable download button during process
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.disabled = true;
+            downloadBtn.classList.add('opacity-50');
+
+            debugLog('Starting image download process');
+
+            // Create a new image element to clone the background
+            const img = new Image();
+            img.crossOrigin = 'Anonymous'; // Enable CORS
+            img.src = window.getComputedStyle(container).backgroundImage.slice(4, -1).replace(/"/g, "");
+
+            img.onload = function() {
+                // Create a canvas with 1024x1024 dimensions
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 1024;
+                const ctx = canvas.getContext('2d');
+
+                // Draw the background image, scaling to fill 1024x1024
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Draw the overlay text
+                const nameOverlay = document.getElementById('nameOverlay');
+                ctx.font = '40px Poppins'; // Adjusted for 1024px canvas
+                ctx.fillStyle = 'black';
+                ctx.textAlign = 'center';
+                
+                // Split the text into lines
+                const lines = nameOverlay.innerHTML.replace(/<br>/g, '\n').replace(/<\/?[^>]+(>|$)/g, '').split('\n');
+                
+                // Calculate line height and starting Y position
+                const lineHeight = 30; // Adjusted for 1024px canvas
+                const startY = canvas.height - (lines.length * lineHeight) - 50; // Adjusted position
+                
+                // Draw each line
+                lines.forEach((line, index) => {
+                    ctx.fillText(line.trim(), canvas.width / 2, startY + (index * lineHeight));
+                });
+
+                try {
+                    // Convert canvas to data URL
+                    const dataURL = canvas.toDataURL('image/png');
+                    debugLog(`Data URL generated: ${dataURL.substring(0, 50)}...`);
+                    
+                    // Create a temporary link element
+                    const link = document.createElement('a');
+                    link.download = 'independence_day_2025.png';
+                    link.href = dataURL;
+                    
+                    // Trigger download
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    debugLog('Download link created and clicked');
+                } catch (error) {
+                    debugLog(`Download error: ${error.message}`);
+                    showErrorModal('Download Error', `Failed to download image: ${error.message}`);
+                } finally {
+                    // Re-enable download button
+                    downloadBtn.disabled = false;
+                    downloadBtn.classList.remove('opacity-50');
+                }
+            };
+
+            img.onerror = function(error) {
+                debugLog(`Image load error: ${error}`);
+                showErrorModal('Image Error', 'Failed to load background image');
+                // showDebugModal(); // Commented out
+                
+                // Re-enable download button
+                downloadBtn.disabled = false;
+                downloadBtn.classList.remove('opacity-50');
+            };
+        }
+
+        function shareImage() {
+            const container = document.getElementById('generatedImageContainer');
+            
+            // Disable share button during process
+            const shareBtn = document.getElementById('shareBtn');
+            shareBtn.disabled = true;
+            shareBtn.classList.add('opacity-50');
+
+            debugLog('Starting image share process');
+
+            // Create a new image element to clone the background
+            const img = new Image();
+            img.crossOrigin = 'Anonymous'; // Enable CORS
+            img.src = window.getComputedStyle(container).backgroundImage.slice(4, -1).replace(/"/g, "");
+
+            img.onload = function() {
+                // Create a canvas with 1024x1024 dimensions
+                const canvas = document.createElement('canvas');
+                canvas.width = 1024;
+                canvas.height = 1024;
+                const ctx = canvas.getContext('2d');
+
+                // Draw the background image, scaling to fill 1024x1024
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Draw the overlay text
+                const nameOverlay = document.getElementById('nameOverlay');
+                ctx.font = '20px Poppins'; // Adjusted for 1024px canvas
+                ctx.fillStyle = 'black';
+                ctx.textAlign = 'center';
+                
+                // Split the text into lines
+                const lines = nameOverlay.innerHTML.replace(/<br>/g, '\n').replace(/<\/?[^>]+(>|$)/g, '').split('\n');
+                
+                // Calculate line height and starting Y position
+                const lineHeight = 30; // Adjusted for 1024px canvas
+                const startY = canvas.height - (lines.length * lineHeight) - 50; // Adjusted position
+                
+                // Draw each line
+                lines.forEach((line, index) => {
+                    ctx.fillText(line.trim(), canvas.width / 2, startY + (index * lineHeight));
+                });
+
+                // Convert canvas to data URL
+                const dataURL = canvas.toDataURL('image/png');
+                debugLog(`Data URL generated: ${dataURL.substring(0, 50)}...`);
+
+                // Convert data URL to blob
+                fetch(dataURL)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        debugLog('Blob conversion successful');
+
+                        // Check if Web Share API is supported
+                        if (navigator.share) {
+                            const file = new File([blob], 'independence_day_2025.png', { type: 'image/png' });
+                            
+                            navigator.share({
+                                title: 'Independence Day 2025',
+                                text: 'Happy Independence Day! To Generate your own photo with your name visit https://academy.webotapp.com/tools/independence/',
+                                files: [file]
+                            }).then(() => {
+                                debugLog('Share successful');
+                            }).catch(shareError => {
+                                debugLog(`Share error: ${shareError.message}`);
+                                showErrorModal('Share Error', `Failed to share image: ${shareError.message}`);
+                                // showDebugModal(); // Commented out
+                            });
+                        } else {
+                            debugLog('Web Share API not supported');
+                            showErrorModal('Share Unsupported', 'Web Share API not supported. Please download the image manually.');
+                            // showDebugModal(); // Commented out
+                        }
+                    })
+                    .catch(error => {
+                        debugLog(`Blob conversion error: ${error.message}`);
+                        showErrorModal('Share Error', `Failed to prepare image for sharing: ${error.message}`);
+                        // showDebugModal(); // Commented out
+                    })
+                    .finally(() => {
+                        // Re-enable share button
+                        shareBtn.disabled = false;
+                        shareBtn.classList.remove('opacity-50');
+                    });
+            };
+
+            img.onerror = function(error) {
+                debugLog(`Image load error: ${error}`);
+                showErrorModal('Image Error', 'Failed to load background image');
+                // showDebugModal(); // Commented out
+                
+                // Re-enable share button
+                shareBtn.disabled = false;
+                shareBtn.classList.remove('opacity-50');
+            };
+        }
+
+        function resetGenerator() {
+            // Clear name input
+            document.getElementById('nameInput').value = '';
+            
+            // Hide image generation section
+            document.getElementById('imageGenerationSection').classList.add('hidden');
+            
+            // Show name input section
+            document.getElementById('nameInputSection').classList.remove('hidden');
+        }
+
+        // Check browser capabilities on page load
+        window.addEventListener('load', () => {
+            debugLog(`Browser: ${navigator.userAgent}`);
+            debugLog(`Web Share API Supported: ${!!navigator.share}`);
+        });
+    </script>
+    <canvas id="confettiCanvas"></canvas>
+</body>
+</html>

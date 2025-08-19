@@ -1,4 +1,4 @@
-package com.example.edu_app;
+package com.iwd.exponent;
 
 import io.flutter.embedding.android.FlutterActivity;
 

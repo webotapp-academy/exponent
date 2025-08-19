@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -16,25 +18,35 @@ class _SplashScreenState extends State<SplashScreen> {
     _navigateAfterDelay();
   }
 
-  void _navigateAfterDelay() {
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                const LoginScreen(),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 600),
-          ),
-        );
-      }
-    });
+  Future<void> _navigateAfterDelay() async {
+    // Brief splash delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    bool isLoggedIn = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      final storedPhone = prefs.getString('phone');
+      debugPrint('[SPLASH] isLoggedIn=$isLoggedIn, phone=$storedPhone');
+    } catch (e) {
+      debugPrint('[SPLASH] SharedPreferences error: $e');
+    }
+
+    if (!mounted) return;
+
+    final next = isLoggedIn
+        ? HomeScreen(userData: const {'from': 'splash'})
+        : const LoginScreen();
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => next,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 600),
+      ),
+    );
   }
 
   @override
@@ -45,8 +57,20 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
+        body: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFF0F4F8), // Soft light blue-gray
+            const Color(0xFFE6EDF3), // Slightly darker light blue-gray
+            const Color(0xFFF5F7FA), // Lightest shade
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -55,20 +79,22 @@ class _SplashScreenState extends State<SplashScreen> {
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue[100]!.withOpacity(0.3),
-                    blurRadius: 30,
-                    spreadRadius: 5,
+                    color: const Color(0xFF1A3A6C),
+                    blurRadius: 20,
+                    spreadRadius: 2,
                   ),
                 ],
               ),
               child: ClipOval(
-                child: Image.asset(
-                  'assets/icons/splash_logo.png',
-                  fit: BoxFit.cover,
-                  width: 120,
-                  height: 120,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Image.asset(
+                    'assets/icons/splash_logo.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
@@ -76,24 +102,25 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               'Exponent Classes',
               style: GoogleFonts.poppins(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[800],
-                letterSpacing: 1.2,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1A3A6C), // Matching logo dark green
+                letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             SizedBox(
-              width: 32,
-              height: 32,
+              width: 40,
+              height: 40,
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[800]!),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFF1B5E20)),
                 strokeWidth: 3,
               ),
             ),
           ],
         ),
       ),
-    );
+    ));
   }
 }

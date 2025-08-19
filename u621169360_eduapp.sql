@@ -216,6 +216,56 @@ CREATE TABLE `Videos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
+-- NEET Test Series Registration Table
+CREATE TABLE neet_registrations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,  -- Added UNIQUE constraint
+    student_name VARCHAR(100) NOT NULL,
+    mobile_number VARCHAR(15) NOT NULL UNIQUE,
+    gender ENUM('Male', 'Female', 'Other') NOT NULL,
+    father_name VARCHAR(100) NOT NULL,
+    parent_mobile VARCHAR(15) NOT NULL,
+    college_name VARCHAR(200) NOT NULL,
+    tenth_percentage DECIMAL(5,2) NOT NULL,
+    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    FOREIGN KEY (user_id) REFERENCES Users(UserID)  -- Optional: Add foreign key constraint
+);
+
+-- Sliders Table
+CREATE TABLE IF NOT EXISTS sliders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    image_path VARCHAR(255) NOT NULL,
+    title VARCHAR(255),
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    display_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Sample Slider Data
+INSERT INTO sliders (image_path, title, description, display_order) VALUES 
+(
+    'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=1200&auto=format&fit=crop&q=70', 
+    'Welcome to Exponent Classes', 
+    'Your path to academic excellence', 
+    1
+),
+(
+    'https://images.unsplash.com/photo-1503676382389-4809596d5290?w=1200&auto=format&fit=crop&q=70', 
+    'Comprehensive Learning', 
+    'Innovative teaching methods', 
+    2
+),
+(
+    'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?w=1200&auto=format&fit=crop&q=70', 
+    'Expert Guidance', 
+    'Learn from the best in the industry', 
+    3
+);
+
+--
 -- Indexes for dumped tables
 --
 

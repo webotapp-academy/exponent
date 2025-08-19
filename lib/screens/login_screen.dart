@@ -3,9 +3,9 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'home_screen.dart';
 import 'signup_screen.dart';
 import 'otp_screen.dart';
+import 'package:flutter/services.dart';
 
 class LoginScreen extends HookWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -14,6 +14,7 @@ class LoginScreen extends HookWidget {
   Widget build(BuildContext context) {
     final phoneController = useTextEditingController();
     final isLoading = useState(false);
+    final isValidPhone = useState(false);
 
     // Login API endpoint
     const apiUrl = 'https://indiawebdesigns.in/app/eduapp/user-app/login.php';
@@ -21,12 +22,49 @@ class LoginScreen extends HookWidget {
     Future<void> handleLogin() async {
       final phone = phoneController.text.trim();
       debugPrint('Login input phone: $phone'); // <-- Debug print input
+
+      // Comprehensive phone number validation
       if (phone.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please enter your phone number')),
+          SnackBar(
+            content: Text(
+              'Please enter your phone number',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red[400],
+          ),
         );
         return;
       }
+
+      if (phone.length != 10) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Please enter a valid 10-digit mobile number',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red[400],
+          ),
+        );
+        return;
+      }
+
+      // Check if the number starts with valid Indian mobile prefixes
+      final validPrefixes = ['6', '7', '8', '9'];
+      if (!validPrefixes.contains(phone[0])) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Please enter a valid Indian mobile number',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red[400],
+          ),
+        );
+        return;
+      }
+
       isLoading.value = true;
       try {
         final response = await http.post(
@@ -49,18 +87,38 @@ class LoginScreen extends HookWidget {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'Login failed')),
+            SnackBar(
+              content: Text(
+                data['message'] ?? 'Login failed',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.red[400],
+            ),
           );
         }
       } catch (e) {
         debugPrint('Login error: $e'); // <-- Debug print error
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Network error: $e')),
+          SnackBar(
+            content: Text(
+              'Network error: $e',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red[400],
+          ),
         );
       } finally {
         isLoading.value = false;
       }
     }
+
+    // Update phone validation on each change
+    useEffect(() {
+      final phone = phoneController.text.trim();
+      isValidPhone.value =
+          phone.length == 10 && ['6', '7', '8', '9'].contains(phone[0]);
+      return null;
+    }, [phoneController.text]);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -147,6 +205,7 @@ class LoginScreen extends HookWidget {
                       hintText: 'Enter your phone number',
                       prefixIcon: Icons.phone_android,
                       keyboardType: TextInputType.phone,
+                      isValidPhone: isValidPhone.value,
                     ),
                   ),
                   const SizedBox(height: 22),
@@ -203,7 +262,7 @@ class LoginScreen extends HookWidget {
 
                   const SizedBox(height: 24),
                   // Signup redirect
-                  Row(
+                  Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
@@ -213,6 +272,7 @@ class LoginScreen extends HookWidget {
                           fontSize: 14,
                         ),
                       ),
+                      const SizedBox(height: 4),
                       TextButton(
                         onPressed: () {
                           Navigator.push(
@@ -247,24 +307,65 @@ class LoginScreen extends HookWidget {
     required String hintText,
     required IconData prefixIcon,
     TextInputType keyboardType = TextInputType.text,
-    Widget? suffixIcon,
+    required bool isValidPhone,
   }) {
     return TextField(
       controller: controller,
-      keyboardType: keyboardType,
+      keyboardType: TextInputType.phone,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(10),
+      ],
+      style: GoogleFonts.poppins(
+        color: const Color(0xFF1A3A6C),
+        fontSize: 16,
+      ),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: GoogleFonts.poppins(color: Colors.grey),
-        prefixIcon: Icon(prefixIcon, color: Colors.grey),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: Colors.grey[100],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
+        counterText: '', // Hide character count
+        hintStyle: GoogleFonts.poppins(
+          color: Colors.grey[500],
+          fontSize: 15,
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+        prefixIcon: Icon(
+          prefixIcon,
+          color: const Color(0xFF1A3A6C).withOpacity(0.7),
+          size: 22,
+        ),
+        suffixIcon: isValidPhone
+            ? Icon(
+                Icons.check_circle,
+                color: Colors.green[600],
+                size: 22,
+              )
+            : null,
+        filled: true,
+        fillColor: Colors.white,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.blue[100]!,
+            width: 1.5,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: const Color(0xFF1A3A6C),
+            width: 2,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 15,
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.red[400]!,
+            width: 1.5,
+          ),
+        ),
       ),
     );
   }

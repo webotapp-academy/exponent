@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'subject_list_screen.dart';
 import 'mycourses_chapters_screen.dart';
-import 'mycourses_chapter_detail_screen.dart';
+import 'home_screen.dart';
+// import 'mycourses_chapters_screen.dart';
+// import 'mycourses_chapter_detail_screen.dart';
 
 class MyCoursesScreen extends StatefulWidget {
-  const MyCoursesScreen({super.key});
+  final int? subjectId; // Optional: when provided, fetch chapters here
+  const MyCoursesScreen({super.key, this.subjectId});
 
   @override
   State<MyCoursesScreen> createState() => _MyCoursesScreenState();
@@ -22,20 +26,86 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
   late Animation<Offset> _cardSlideAnimation;
 
   int _selectedTab = 0; // 0: Class 12, 1: NEET
-  late Future<List<dynamic>> _coursesFuture;
+  late Future<List<dynamic>> _coursesFuture; // will hold subjects per course
+  Future<List<dynamic>>? _topicsFuture; // optional when subjectId provided
+  late Future<Map<String, String>> _profileFuture;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _startAnimations();
-    _coursesFuture = fetchCourses();
+    _coursesFuture = fetchSubjects('class12');
+    _profileFuture = _loadProfileFromPrefs();
+    if (widget.subjectId != null) {
+      _topicsFuture = fetchTopics(widget.subjectId!);
+    }
+  }
+
+  void _onReload() {
+    setState(() {
+      _coursesFuture = fetchSubjects(_selectedTab == 0
+          ? 'class12'
+          : _selectedTab == 1
+              ? 'class12Assamese'
+              : _selectedTab == 2
+                  ? 'neet'
+                  : 'class12');
+      if (widget.subjectId != null) {
+        _topicsFuture = fetchTopics(widget.subjectId!);
+      }
+    });
+  }
+
+  Future<Map<String, String>> _loadProfileFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final name = (prefs.getString('name') ?? '').trim();
+      final phone = (prefs.getString('phone') ??
+              prefs.getString('Userphone') ??
+              prefs.getString('Phone') ??
+              '')
+          .trim();
+      return {
+        'name': name,
+        'phone': phone,
+      };
+    } catch (_) {
+      return {'name': '', 'phone': ''};
+    }
+  }
+
+  Future<List<dynamic>> fetchTopics(int subjectId) async {
+    final response = await http.get(
+      Uri.parse(
+          'https://indiawebdesigns.in/app/eduapp/user-app/get_topics.php?subject_id=$subjectId'),
+    );
+    final data = jsonDecode(response.body);
+    if (data['status'] == 'success') {
+      // API returns { status, topics: [...] }
+      final List topics = data['topics'] ?? [];
+      return topics.cast<dynamic>();
+    }
+    throw Exception(data['message'] ?? 'Failed to load chapters');
+  }
+
+  Future<List<dynamic>> fetchSubjects(String course) async {
+    final response = await http.get(
+      Uri.parse(
+          'https://indiawebdesigns.in/app/eduapp/user-app/get_topics.php?course=$course'),
+    );
+    final data = jsonDecode(response.body);
+    if (data['status'] == 'success') {
+      final List subjects = data['subjects'] ?? [];
+      return subjects.cast<dynamic>();
+    }
+    throw Exception(data['message'] ?? 'Failed to load subjects');
   }
 
   Future<List<dynamic>> fetchCourses() async {
     final response = await http.get(
       Uri.parse(
-          'https://indiawebdesigns.in/app/eduapp/user-app/get_courses.php'),
+          'https://indiawebdesigns.in/app/eduapp/user-app/get_topics.php'),
     );
     final data = jsonDecode(response.body);
     if (data['status'] == 'success') {
@@ -263,21 +333,45 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.grey[900]),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.grey[900]),
+          onPressed: () {
+            // Navigate to home screen, clearing previous routes
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const HomeScreen(
+                  // Pass an empty map or retrieve user data from SharedPreferences
+                  userData: {},
+                ),
+              ),
+              (Route<dynamic> route) => false,
+            );
+          },
+        ),
         title: Text(
           'My Courses',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: Colors.grey[900],
+            fontSize: 16,
           ),
         ),
-        backgroundColor: Colors.blue[800],
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            tooltip: 'Reload',
+            onPressed: _onReload,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: Column(
         children: [
@@ -326,12 +420,13 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
                       ),
                       Text(
                         'Browse your enrolled courses',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           color: Colors.white.withOpacity(0.95),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
@@ -353,15 +448,30 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
                 child: Row(
                   children: [
                     _SegmentTab(
-                      label: 'Class 12',
+                      label: 'Class-12 English',
                       selected: _selectedTab == 0,
-                      onTap: () => setState(() => _selectedTab = 0),
+                      onTap: () => setState(() {
+                        _selectedTab = 0;
+                        _coursesFuture = fetchSubjects('class12');
+                      }),
+                      color: Colors.blue[800]!,
+                    ),
+                    _SegmentTab(
+                      label: 'Class-12 Assamese',
+                      selected: _selectedTab == 1,
+                      onTap: () => setState(() {
+                        _selectedTab = 1; // Corrected from 0 to 1
+                        _coursesFuture = fetchSubjects('class12Assamese');
+                      }),
                       color: Colors.blue[800]!,
                     ),
                     _SegmentTab(
                       label: 'NEET',
-                      selected: _selectedTab == 1,
-                      onTap: () => setState(() => _selectedTab = 1),
+                      selected: _selectedTab == 2,
+                      onTap: () => setState(() {
+                        _selectedTab = 2; // Corrected from 1 to 2
+                        _coursesFuture = fetchSubjects('neet');
+                      }),
                       color: Colors.blue[800]!,
                     ),
                   ],
@@ -369,79 +479,274 @@ class _MyCoursesScreenState extends State<MyCoursesScreen>
               ),
             ),
           ),
-          Expanded(
-            child: FutureBuilder<List<dynamic>>(
-              future: _coursesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  // Lightweight skeleton while loading
-                  return ListView.builder(
+          // If subjectId is provided, show chapters list first
+          if (widget.subjectId != null)
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: _topicsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Failed to load chapters'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('No chapters found.'));
+                  }
+                  final chapters = snapshot.data!;
+                  return ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                    itemCount: 6,
-                    itemBuilder: (context, index) => Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      height: 90,
-                      decoration: BoxDecoration(
+                    itemCount: chapters.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final ch = chapters[index];
+                      final title =
+                          (ch['Name'] ?? ch['title'] ?? 'Chapter').toString();
+                      final desc = (ch['Description'] ?? '').toString();
+                      return Material(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                    ),
-                  );
-                } else if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.error_outline,
-                              color: Colors.redAccent, size: 40),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Failed to load courses',
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
+                        elevation: 1,
+                        shadowColor: Colors.black.withOpacity(0.04),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text('${index + 1}',
+                                    style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.blue[700])),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(title,
+                                        style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14.5,
+                                            color: const Color(0xFF0F172A))),
+                                    const SizedBox(height: 4),
+                                    Text(desc,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 12.5,
+                                            color: const Color(0xFF64748B))),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${snapshot.error}',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   );
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Center(
-                      child: Text(
-                        'No courses found.',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: const Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
+                },
+              ),
+            )
+          else
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: _coursesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                      itemCount: 6,
+                      itemBuilder: (context, index) => Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
                       ),
-                    ),
+                    );
+                  } else if (snapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.error_outline,
+                                color: Colors.redAccent, size: 40),
+                            const SizedBox(height: 8),
+                            Text('Failed to load subjects',
+                                style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w700, fontSize: 16)),
+                            const SizedBox(height: 6),
+                            Text('${snapshot.error}',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                    color: const Color(0xFF64748B))),
+                          ],
+                        ),
+                      ),
+                    );
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Center(
+                        child: Text('No subjects found.',
+                            style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: const Color(0xFF64748B),
+                                fontWeight: FontWeight.w500)),
+                      ),
+                    );
+                  }
+                  final subjects = snapshot.data!;
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    itemCount: subjects.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      final s = subjects[index];
+                      final name = (s['msub_name'] ?? '').toString();
+                      final desc = (s['msub_desc'] ?? '').toString();
+                      final dbId = s['id'];
+                      return Material(
+                        color: Colors.white,
+                        elevation: 2,
+                        shadowColor: Colors.black.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            // Navigate to chapters screen with this subject
+                            // Navigator.push(
+                            //   context,
+                            //   MaterialPageRoute(
+                            //     builder: (_) =>
+                            //         MyCoursesScreen(subjectId: dbId),
+                            //   ),
+                            // );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 46,
+                                  height: 46,
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withOpacity(0.12),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text('${index + 1}',
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.blue[700])),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(name,
+                                          style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14.5,
+                                              color: const Color(0xFF0F172A))),
+                                      const SizedBox(height: 4),
+                                      Text(desc,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 12.5,
+                                              color: const Color(0xFF64748B))),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                OutlinedButton(
+                                  onPressed: () {
+                                    final String subjectName = name;
+                                    final String courseLabel =
+                                        _selectedTab == 0 ? 'Class 12' : 'NEET';
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => MyCoursesChaptersScreen(
+                                          subjectName: subjectName,
+                                          courseLabel: courseLabel,
+                                          isNeet: _selectedTab == 1,
+                                          subjectId: dbId,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    side: BorderSide(color: Colors.blue[200]!),
+                                    foregroundColor: Colors.blue[700],
+                                    textStyle: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12),
+                                  ),
+                                  child: const Text('View'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   );
-                }
-                return _buildCoursesList(
-                  snapshot.data!,
-                  _selectedTab == 0 ? 'Class 12' : 'NEET',
-                );
-              },
+                },
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 1),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
-      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 1),
     );
   }
 }
@@ -462,6 +767,9 @@ class _SegmentTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Split the label into words
+    final words = label.split(' ');
+
     return Expanded(
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -469,7 +777,7 @@ class _SegmentTab extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           margin: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: selected ? color : Colors.white,
@@ -485,14 +793,30 @@ class _SegmentTab extends StatelessWidget {
                 : [],
           ),
           child: Center(
-            child: Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-                fontSize: 14.5,
-                color: selected ? Colors.white : color,
-              ),
-            ),
+            child: words.length > 1
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: words
+                        .map((word) => Text(
+                              word,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                                height: 1.2,
+                                color: selected ? Colors.white : color,
+                              ),
+                            ))
+                        .toList(),
+                  )
+                : Text(
+                    label,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: selected ? Colors.white : color,
+                    ),
+                  ),
           ),
         ),
       ),
